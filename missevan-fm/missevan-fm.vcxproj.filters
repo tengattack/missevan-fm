@@ -19,6 +19,9 @@
     <Filter Include="ui">
       <UniqueIdentifier>{46b64b9e-c78f-4910-880b-b329cc1c7d69}</UniqueIdentifier>
     </Filter>
+    <Filter Include="audio">
+      <UniqueIdentifier>{c36bab27-355f-4389-9ec1-4c6a32c390d4}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <Text Include="ReadMe.txt" />
@@ -72,6 +75,18 @@
     <ClInclude Include="missevan-fm.h">
       <Filter>头文件</Filter>
     </ClInclude>
+    <ClInclude Include="audio\AudioCapture.h">
+      <Filter>audio</Filter>
+    </ClInclude>
+    <ClInclude Include="audio\common.h">
+      <Filter>audio</Filter>
+    </ClInclude>
+    <ClInclude Include="audio\MicAudioCapture.h">
+      <Filter>audio</Filter>
+    </ClInclude>
+    <ClInclude Include="audio\LoopbackAudioCapture.h">
+      <Filter>audio</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">
@@ -121,6 +136,15 @@
     </ClCompile>
     <ClCompile Include="MissEvanFMWindow.cpp">
       <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="audio\AudioCapture.cpp">
+      <Filter>audio</Filter>
+    </ClCompile>
+    <ClCompile Include="audio\MicAudioCapture.cpp">
+      <Filter>audio</Filter>
+    </ClCompile>
+    <ClCompile Include="audio\LoopbackAudioCapture.cpp">
+      <Filter>audio</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
