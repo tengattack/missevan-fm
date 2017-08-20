@@ -1,0 +1,136 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="源文件">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="头文件">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    </Filter>
+    <Filter Include="资源文件">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    </Filter>
+    <Filter Include="base">
+      <UniqueIdentifier>{a9e1523b-ad86-4dd7-bee5-9ae5d491918c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ui">
+      <UniqueIdentifier>{46b64b9e-c78f-4910-880b-b329cc1c7d69}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="ReadMe.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="stdafx.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="targetver.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="DeviceManager.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="UserAccount.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="Server.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="ChatManager.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="LivePlayer.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="base\common.h">
+      <Filter>base</Filter>
+    </ClInclude>
+    <ClInclude Include="base\global.h">
+      <Filter>base</Filter>
+    </ClInclude>
+    <ClInclude Include="ui\TrayIcon.h">
+      <Filter>ui</Filter>
+    </ClInclude>
+    <ClInclude Include="ui\MainWindow.h">
+      <Filter>ui</Filter>
+    </ClInclude>
+    <ClInclude Include="ui\Menu.h">
+      <Filter>ui</Filter>
+    </ClInclude>
+    <ClInclude Include="MainTray.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="base\UpdateInfo.h">
+      <Filter>base</Filter>
+    </ClInclude>
+    <ClInclude Include="MissEvanFMWindow.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="missevan-fm.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="stdafx.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="missevan-fm.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="DeviceManager.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="UserAccount.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="Server.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="ChatManager.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="LivePlayer.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="base\global.cpp">
+      <Filter>base</Filter>
+    </ClCompile>
+    <ClCompile Include="ui\MainWindow.cpp">
+      <Filter>ui</Filter>
+    </ClCompile>
+    <ClCompile Include="ui\TrayIcon.cpp">
+      <Filter>ui</Filter>
+    </ClCompile>
+    <ClCompile Include="ui\Menu.cc">
+      <Filter>ui</Filter>
+    </ClCompile>
+    <ClCompile Include="MainTray.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\sdks\tengattack\cuteui\base\base_util.cc">
+      <Filter>base</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\sdks\tengattack\common\common_util.cc">
+      <Filter>base</Filter>
+    </ClCompile>
+    <ClCompile Include="base\UpdateInfo.cc">
+      <Filter>base</Filter>
+    </ClCompile>
+    <ClCompile Include="MissEvanFMWindow.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="missevan-fm.rc">
+      <Filter>资源文件</Filter>
+    </ResourceCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="missevan.ico">
+      <Filter>资源文件</Filter>
+    </None>
+  </ItemGroup>
+</Project>

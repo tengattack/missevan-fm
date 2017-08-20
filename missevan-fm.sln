@@ -1,0 +1,41 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 15
+VisualStudioVersion = 15.0.26228.4
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "missevan-fm", "missevan-fm\missevan-fm.vcxproj", "{741A3661-B1EB-451C-9E57-FB5D8D092558}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "MissEvanFMLoader", "MissEvanFMLoader\MissEvanFMLoader.vcxproj", "{11CCBEFD-76E7-4316-AF23-F54FDF8F65BE}"
+	ProjectSection(ProjectDependencies) = postProject
+		{741A3661-B1EB-451C-9E57-FB5D8D092558} = {741A3661-B1EB-451C-9E57-FB5D8D092558}
+	EndProjectSection
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|x64 = Debug|x64
+		Debug|x86 = Debug|x86
+		Release|x64 = Release|x64
+		Release|x86 = Release|x86
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{741A3661-B1EB-451C-9E57-FB5D8D092558}.Debug|x64.ActiveCfg = Debug|x64
+		{741A3661-B1EB-451C-9E57-FB5D8D092558}.Debug|x64.Build.0 = Debug|x64
+		{741A3661-B1EB-451C-9E57-FB5D8D092558}.Debug|x86.ActiveCfg = DebugDll|Win32
+		{741A3661-B1EB-451C-9E57-FB5D8D092558}.Debug|x86.Build.0 = DebugDll|Win32
+		{741A3661-B1EB-451C-9E57-FB5D8D092558}.Release|x64.ActiveCfg = Release|x64
+		{741A3661-B1EB-451C-9E57-FB5D8D092558}.Release|x64.Build.0 = Release|x64
+		{741A3661-B1EB-451C-9E57-FB5D8D092558}.Release|x86.ActiveCfg = ReleaseDll|Win32
+		{741A3661-B1EB-451C-9E57-FB5D8D092558}.Release|x86.Build.0 = ReleaseDll|Win32
+		{11CCBEFD-76E7-4316-AF23-F54FDF8F65BE}.Debug|x64.ActiveCfg = Debug|x64
+		{11CCBEFD-76E7-4316-AF23-F54FDF8F65BE}.Debug|x64.Build.0 = Debug|x64
+		{11CCBEFD-76E7-4316-AF23-F54FDF8F65BE}.Debug|x86.ActiveCfg = Debug|Win32
+		{11CCBEFD-76E7-4316-AF23-F54FDF8F65BE}.Debug|x86.Build.0 = Debug|Win32
+		{11CCBEFD-76E7-4316-AF23-F54FDF8F65BE}.Release|x64.ActiveCfg = Release|x64
+		{11CCBEFD-76E7-4316-AF23-F54FDF8F65BE}.Release|x64.Build.0 = Release|x64
+		{11CCBEFD-76E7-4316-AF23-F54FDF8F65BE}.Release|x86.ActiveCfg = Release|Win32
+		{11CCBEFD-76E7-4316-AF23-F54FDF8F65BE}.Release|x86.Build.0 = Release|Win32
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal

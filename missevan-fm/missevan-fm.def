@@ -1,0 +1,3 @@
+LIBRARY missevan-fm
+EXPORTS
+	MissEvanFMMain
