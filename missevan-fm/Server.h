@@ -15,6 +15,7 @@ class UserAccount;
 class ChatManager;
 class DeviceManager;
 class LivePlayer;
+class LivePublisher;
 class CBuffer;
 
 class Server
@@ -80,6 +81,7 @@ protected:
 	ChatManager *m_cm_ptr;
 	DeviceManager *m_dm_ptr;
 	LivePlayer *m_player_ptr;
+	LivePublisher *m_publisher_ptr;
 	websocketpp::connection_hdl m_handling_hdl;
 	CBuffer *m_certs_buf;
 	CBuffer *m_dh_buf;

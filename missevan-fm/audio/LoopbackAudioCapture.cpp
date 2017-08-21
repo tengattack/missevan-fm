@@ -119,7 +119,7 @@ bool CLoopbackAudioCapture::Start()
 
 	hr = _AudioClient->Initialize(AUDCLNT_SHAREMODE_SHARED,
 		AUDCLNT_SESSIONFLAGS_DISPLAY_HIDE | AUDCLNT_STREAMFLAGS_EVENTCALLBACK | AUDCLNT_STREAMFLAGS_NOPERSIST | AUDCLNT_STREAMFLAGS_LOOPBACK,
-		_bufferLength * 10000 / mixFormat->nAvgBytesPerSec, // This parameter is of type REFERENCE_TIME and is expressed in 100-nanosecond units.
+		(uint64)_bufferLength * 10000000 / mixFormat->nAvgBytesPerSec, // This parameter is of type REFERENCE_TIME and is expressed in 100-nanosecond units.
 		0, mixFormat, &chatGuid);
 	CoTaskMemFree(mixFormat);
 	mixFormat = NULL;

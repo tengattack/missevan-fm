@@ -4,30 +4,27 @@
 #pragma once
 
 #include "common.h"
+#include "base/types.h"
 
 class CAudioCapture;
-typedef void (CALLBACK *AudioCaptureCallbackProc)(uint8 *data, uint32 length, CAudioCapture *pCapture, void *user_data);
+typedef void (CALLBACK *AudioCaptureCallbackProc)(uint8 *data, ulong length, CAudioCapture *pCapture, void *user_data);
 
-class CAudioCapture
+class CAudioCapture : public CCallbackAble<AudioCaptureCallbackProc>
 {
 protected:
 	AudioFormat _format;
-	AudioCaptureCallbackProc _callback;
-	void *_user_data;
 
 	// inputSamples * 96
-	uint32 _bufferLength;
+	ulong _bufferLength;
 
 public:
-	CAudioCapture(uint32 bufferLength);
+	CAudioCapture(ulong bufferLength);
 	virtual ~CAudioCapture();
 
 	bool Initialize(AudioFormat *format);
 	virtual void Shutdown() = 0;
 	virtual bool Start() = 0;
 	virtual void Stop() = 0;
-
-	void RegisterCallback(AudioCaptureCallbackProc callback, void *user_data);
 };
 
 #endif

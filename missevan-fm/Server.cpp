@@ -14,6 +14,7 @@
 #include "UserAccount.h"
 #include "ChatManager.h"
 #include "LivePlayer.h"
+#include "LivePublisher.h"
 
 using websocketpp::lib::placeholders::_1;
 using websocketpp::lib::placeholders::_2;
@@ -46,6 +47,7 @@ Server::Server()
 	m_user_ptr = UserAccount::GetInstance();
 	m_cm_ptr = ChatManager::GetInstance();
 	m_player_ptr = new LivePlayer();
+	m_publisher_ptr = new LivePublisher();
 }
 
 
@@ -54,6 +56,10 @@ Server::~Server()
 	if (m_player_ptr) {
 		m_player_ptr->Stop();
 		delete m_player_ptr;
+	}
+	if (m_publisher_ptr) {
+		m_publisher_ptr->Stop();
+		delete m_publisher_ptr;
 	}
 	if (m_certs_buf) {
 		delete m_certs_buf;

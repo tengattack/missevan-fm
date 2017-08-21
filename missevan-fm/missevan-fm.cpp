@@ -93,6 +93,11 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 	}
 	DEFER(global::Uninit());
 
+	if (!global::NetInit()) {
+		printf("network init failed!\n");
+	}
+	DEFER(global::NetUninit());
+
 	CMainWindow::Init(APP_CLASSNAME);
 
 	DeviceManager::Init();

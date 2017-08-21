@@ -11,8 +11,12 @@ class CMainWindow;
 namespace global {
 	extern HINSTANCE hInstance;
 	extern HICON hIcon;
+
 	extern bool Init(HINSTANCE hInstance);
 	extern void Uninit();
+
+	extern bool NetInit();
+	extern void NetUninit();
 
 	extern std::wstring wpath;
 	extern std::string apath;

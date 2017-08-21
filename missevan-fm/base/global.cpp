@@ -55,6 +55,8 @@ namespace global {
 			return false;
 		}
 
+		CoInitializeEx(NULL, COINIT_MULTITHREADED);
+
 		InitPath();
 		hIcon = LoadIcon(_hInstance, MAKEINTRESOURCE(IDI_MAIN));
 
@@ -62,6 +64,18 @@ namespace global {
 	}
 
 	void Uninit() {
+		::CoUninitialize();
 		::OleUninitialize();
+	}
+
+	bool NetInit() {
+		WORD version;
+		WSADATA wsaData;
+		version = MAKEWORD(2, 2);
+		return (WSAStartup(version, &wsaData) == 0);
+	}
+
+	void NetUninit() {
+		WSACleanup();
 	}
 }

@@ -21,4 +21,23 @@ template <class T> void SafeRelease(T **ppT)
 	}
 }
 
+template <class T> class CCallbackAble
+{
+protected:
+	T _callback;
+	void *_user_data;
+
+public:
+	CCallbackAble()
+		: _callback(NULL)
+		, _user_data(NULL)
+	{
+	}
+	void RegisterCallback(T callback, void *user_data)
+	{
+		_callback = callback;
+		_user_data = user_data;
+	}
+};
+
 #endif
