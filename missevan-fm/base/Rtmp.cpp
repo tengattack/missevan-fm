@@ -18,7 +18,7 @@ CRtmp::~CRtmp()
 	Shutdown();
 }
 
-bool CRtmp::Initialize(const char *push_url)
+bool CRtmp::Start(const char *push_url)
 {
 	/* set log level */
 	// RTMP_LogLevel loglvl = RTMP_LOGDEBUG;
@@ -56,6 +56,15 @@ bool CRtmp::Initialize(const char *push_url)
 	}
 
 	return true;
+}
+
+void CRtmp::Stop()
+{
+	if (_rtmp) {
+		RTMP_Close(_rtmp);
+		RTMP_Free(_rtmp);
+		_rtmp = NULL;
+	}
 }
 
 int CRtmp::SendAudioAACHeader(AudioFormat *format)
@@ -138,9 +147,5 @@ int CRtmp::SendAudioAACData(uint8 *buf, int len, long timeoffset)
 
 void CRtmp::Shutdown()
 {
-	if (_rtmp) {
-		RTMP_Close(_rtmp);
-		RTMP_Free(_rtmp);
-		_rtmp = NULL;
-	}
+	Stop();
 }

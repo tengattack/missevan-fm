@@ -16,7 +16,7 @@ CAACEncoder::~CAACEncoder()
 	Shutdown();
 }
 
-ulong CAACEncoder::getInputSamples()
+ulong CAACEncoder::GetInputSamples()
 {
 	return _inputSamples;
 }

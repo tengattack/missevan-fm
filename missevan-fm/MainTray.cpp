@@ -103,7 +103,7 @@ void CMainTray::UpdateMenu()
 		} else {
 			m_mainMenu->Modify(kTMTUser, L"用户（未登录）");
 		}
-		if (stat & Server::kStatChat) {
+		if (stat & Server::kStatPush) {
 			m_pushMenu->Modify(kTMTState, L"推流中");
 			if (m_dm->IsMicOpened()) {
 				m_pushMenu->Modify(kTMTAudioMic, L"关闭麦克风");

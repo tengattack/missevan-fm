@@ -145,7 +145,7 @@ void CMicAudioCapture::Stop()
 	}
 }
 
-void CALLBACK CMicAudioCapture::waveInProc(HWAVEIN hwi, UINT uMsg, DWORD dwInstance, DWORD dwParam1, DWORD dwParam2)
+void CMicAudioCapture::waveInProc(HWAVEIN hwi, UINT uMsg, DWORD dwInstance, DWORD dwParam1, DWORD dwParam2)
 {
 	switch (uMsg)
 	{
@@ -161,7 +161,7 @@ void CALLBACK CMicAudioCapture::waveInProc(HWAVEIN hwi, UINT uMsg, DWORD dwInsta
 
 		if (pMicCapture->_callback)
 		{
-			pMicCapture->_callback((uint8 *)waveHeader->lpData, waveHeader->dwBytesRecorded, pMicCapture, pMicCapture->_user_data);
+			pMicCapture->_callback((uint8 *)waveHeader->lpData, waveHeader->dwBytesRecorded, pMicCapture->_user_data);
 		}
 
 		if (pMicCapture->_waveHandle)

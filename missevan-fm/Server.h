@@ -35,7 +35,7 @@ public:
 	enum SStat {
 		kStatNone = 0x00,
 		kStatUser = 0x01,
-		kStatChat = 0x02,
+		kStatPush = 0x02,
 		kStatPlayer = 0x04,
 	};
 	enum SAction {
@@ -49,9 +49,9 @@ public:
 		kActionStartPull,
 		kActionStopPull,
 
-		kActionCreateRoom,
+		kActionStartPush,
 		kActionJoinRoom,
-		kActionLeaveRoom,
+		kActionStopPush,
 	};
 	enum SEvent {
 		kEventNetworkError = 0,
@@ -82,6 +82,7 @@ protected:
 	DeviceManager *m_dm_ptr;
 	LivePlayer *m_player_ptr;
 	LivePublisher *m_publisher_ptr;
+	std::string m_push_type;
 	websocketpp::connection_hdl m_handling_hdl;
 	CBuffer *m_certs_buf;
 	CBuffer *m_dh_buf;

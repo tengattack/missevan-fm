@@ -7,7 +7,7 @@
 #include "base/types.h"
 
 class CAudioCapture;
-typedef void (CALLBACK *AudioCaptureCallbackProc)(uint8 *data, ulong length, CAudioCapture *pCapture, void *user_data);
+typedef void (CALLBACK *AudioCaptureCallbackProc)(uint8 *data, ulong length, void *user_data);
 
 class CAudioCapture : public CCallbackAble<AudioCaptureCallbackProc>
 {

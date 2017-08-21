@@ -23,7 +23,7 @@ public:
 	CAACEncoder();
 	~CAACEncoder();
 
-	ulong getInputSamples();
+	ulong GetInputSamples();
 
 	bool Initialize(AudioFormat *format, ulong targetBitrate);
 	int Encode(uint8 *data, uint32 samples);

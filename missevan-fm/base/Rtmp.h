@@ -18,7 +18,8 @@ public:
 	CRtmp();
 	~CRtmp();
 
-	bool Initialize(const char *push_url);
+	bool Start(const char *push_url);
+	void Stop();
 
 	int SendAudioAACHeader(AudioFormat *format);
 	int SendAudioAACData(uint8 *buf, int len, long timeoffset);

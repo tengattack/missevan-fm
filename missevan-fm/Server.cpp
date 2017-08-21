@@ -75,7 +75,7 @@ const char *Server::S_ACTION_TEXT[] = {
 	"check", "login", "logout",
 	"set_volume",
 	"start_pull", "stop_pull",
-	"create_room", "join_room", "leave_room",
+	"start_push", "join_room", "stop_push",
 };
 
 Server::context_ptr Server::on_tls_init(Server* s, tls_mode mode, websocketpp::connection_hdl hdl)
@@ -210,6 +210,7 @@ void Server::onWebSocketClose(Server* s, websocketpp::connection_hdl hdl)
 	if (hdl.lock().get() == s->m_handling_hdl.lock().get()) {
 		s->m_player_ptr->Stop();
 		s->m_cm_ptr->LeaveRoom();
+		s->m_publisher_ptr->Stop();
 		s->m_user_ptr->Logout();
 		s->m_handling_hdl.reset();
 	}
@@ -218,7 +219,12 @@ void Server::onWebSocketClose(Server* s, websocketpp::connection_hdl hdl)
 uint32_t Server::GetStat()
 {
 	uint32_t stat = (m_user_ptr->logged() == UserAccount::kUserNone) ? kStatNone : kStatUser;
-	stat |= (m_cm_ptr->stat() == ChatManager::kChatNone) ? kStatNone : kStatChat;
+	if (m_cm_ptr->stat() != ChatManager::kChatNone) {
+		stat |= kStatPush;
+	}
+	if (m_publisher_ptr->IsStreaming()) {
+		stat |= kStatPush;
+	}
 	stat |= (m_player_ptr->stat() > LivePlayer::kStatReady) ? kStatPlayer : kStatNone;
 	return stat;
 }
@@ -242,8 +248,8 @@ void Server::onAction(const SAction action, Json::Value &value, websocketpp::con
 	bool allow_op = (action == kActionSetVolume);
 	bool player_op = (action == kActionStartPull || action == kActionStopPull);
 	bool logout_op = (action == kActionLogout);
-	bool leave_room_op = (action == kActionLeaveRoom);
-	bool room_op = action == kActionCreateRoom || action == kActionJoinRoom || leave_room_op;
+	bool stop_push_op = (action == kActionStopPush);
+	bool room_op = action == kActionStartPush || action == kActionJoinRoom || stop_push_op;
 	if (room_op && !(stat & kStatUser)) {
 		ret_value["code"] = kSForbidden;
 		ret_value["action"] = GetActionText(action);
@@ -252,7 +258,7 @@ void Server::onAction(const SAction action, Json::Value &value, websocketpp::con
 		return;
 	}
 	if ((!room_op && !logout_op && !player_op && !allow_op && (stat & kStatUser))
-			|| (!leave_room_op && !logout_op && !player_op && !allow_op && (stat & kStatChat))) {
+			|| (!stop_push_op && !logout_op && !player_op && !allow_op && (stat & kStatPush))) {
 		ret_value["code"] = kSForbidden;
 		ret_value["action"] = GetActionText(action);
 		ret_value["status"] = stat;
@@ -285,9 +291,10 @@ void Server::onAction(const SAction action, Json::Value &value, websocketpp::con
 			});
 		}
 	} else if (action == kActionLogout) {
-		if (stat & kStatChat) {
+		if (stat & kStatPush) {
 			// leave room first
 			m_cm_ptr->LeaveRoom();
+			m_publisher_ptr->Stop();
 		}
 		m_user_ptr->Logout();
 		success = true;
@@ -308,24 +315,48 @@ void Server::onAction(const SAction action, Json::Value &value, websocketpp::con
 		} else {
 			params_error = true;
 		}
-	} else if (action == kActionCreateRoom) {
+	} else if (action == kActionStartPush) {
 		const uint32_t room_id = value.get("room_id", 0).asUInt();
 		const std::string& room_name = value.get("room_name", "").asString();
 		const std::string& push_url = value.get("push_url", "").asString();
+		const std::string& type = value.get("type", "").asString();
 		if (!room_id || room_name.empty() || push_url.empty()) {
 			params_error = true;
 		} else {
 			if (stat & kStatPlayer) {
 				m_player_ptr->Stop();
 			}
+			m_push_type = "";
+
 			auto opcode = msg->get_opcode();
-			m_cm_ptr->CreateRoom(room_id, room_name, push_url, [this, hdl, opcode](int code) {
+			if (type == "live") {
+				bool bRet = m_publisher_ptr->Start(push_url);
+
 				Json::FastWriter fs;
 				Json::Value ret_value;
-				ret_value["code"] = code;
-				ret_value["action"] = GetActionText(kActionCreateRoom);
+				ret_value["code"] = bRet ? 200 : 500;
+				ret_value["action"] = GetActionText(kActionStartPush);
 				m_server.send(hdl, fs.write(ret_value), opcode);
-			});
+
+				if (bRet) {
+					m_push_type = type;
+				}
+			}
+			else if (type == "connect")
+			{
+				m_cm_ptr->CreateRoom(room_id, room_name, push_url, [this, hdl, opcode](int code) {
+					Json::FastWriter fs;
+					Json::Value ret_value;
+					ret_value["code"] = code;
+					ret_value["action"] = GetActionText(kActionStartPush);
+					m_server.send(hdl, fs.write(ret_value), opcode);
+				});
+				m_push_type = type;
+			}
+			else
+			{
+				params_error = true;
+			}
 		}
 	} else if (action == kActionJoinRoom) {
 		const uint32_t room_id = value.get("room_id", 0).asUInt();
@@ -345,12 +376,19 @@ void Server::onAction(const SAction action, Json::Value &value, websocketpp::con
 				m_server.send(hdl, fs.write(ret_value), opcode);
 			});
 		}
-	} else if (action == kActionLeaveRoom) {
+	} else if (action == kActionStopPush) {
 		const uint32_t room_id = value.get("room_id", 0).asUInt();
 		if (!room_id) {
 			params_error = true;
 		} else {
-			m_cm_ptr->LeaveRoom();
+			if (m_push_type == "live") {
+				m_publisher_ptr->Stop();
+			}
+			else if (m_push_type == "connect")
+			{
+				m_cm_ptr->LeaveRoom();
+			}
+			m_push_type = "";
 			success = true;
 		}
 	} else if (action == kActionStartPull) {

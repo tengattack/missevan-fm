@@ -217,7 +217,7 @@ DWORD CLoopbackAudioCapture::WasapiThread(LPVOID Context)
 			if (pCapture->_callback)
 			{
 				AudioFormat *format = &pCapture->_format;
-				pCapture->_callback(pData, framesAvailable * format->channels * format->bits / 8, pCapture, pCapture->_user_data);
+				pCapture->_callback(pData, framesAvailable * format->channels * format->bits / 8, pCapture->_user_data);
 			}
 
 			hr = pCapture->_CaptureClient->ReleaseBuffer(framesAvailable);
