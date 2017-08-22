@@ -9,11 +9,15 @@
 #define LPM_DATA    WM_USER + 2
 #define LPM_QUIT    WM_QUIT
 
+FILE *fp = NULL;
+
 LivePublisher::LivePublisher()
 	: m_rtmp_ptr(NULL)
 	, m_encoder(NULL)
 	, m_start_time(0)
-	, m_time(0)
+	, m_samples(0)
+	, m_started(false)
+	, m_start_send(false)
 	, m_enable_loopback(false)
 	, m_mixer_thread(NULL)
 	, m_mixer_threadid(NULL)
@@ -22,11 +26,13 @@ LivePublisher::LivePublisher()
 	m_format.sampleRate = 48000;
 	m_format.bits = 16;
 	m_format.channels = 2;
+	fp = fopen("D:\\CloudMusic\\t.pcm", "wb+");
 }
 
 LivePublisher::~LivePublisher()
 {
 	Shutdown();
+	fclose(fp);
 }
 
 uint32 LivePublisher::GetBufferLength()
@@ -55,7 +61,6 @@ LivePublisherCapture* LivePublisher::NewCapture(LivePublisherCaptureType type)
 		cap->type = type;
 		cap->captureChannel = type;
 		cap->active = false;
-		cap->offset = 0;
 		if (type == kMicCapture) {
 			cap->capture = new CMicAudioCapture(GetBufferLength());
 		} else if (type == kLoopbackCapture) {
@@ -118,6 +123,9 @@ bool LivePublisher::Start(const std::string& push_url)
 		m_rtmp_ptr = new CRtmp();
 	}
 
+	m_samples = 0;
+	m_started = false;
+	m_start_send = false;
 	m_push_url = push_url;
 	m_mixer_event.Create(false, false);
 	m_mixer_thread = CreateThread(NULL, 0, MixerProc, this, 0, &m_mixer_threadid);
@@ -130,6 +138,17 @@ bool LivePublisher::Start(const std::string& push_url)
 
 	PostThreadMessage(m_mixer_threadid, LPM_CREATE, NULL, NULL);
 	m_mixer_event.Wait();
+
+	if (!m_started) {
+		printf("Unable to start rtmp.\n");
+		return false;
+	}
+
+	m_filter.setup(3,                   // order
+				   m_format.sampleRate, // sample rate
+				   4000,                // center frequency
+				   880,                 // band width
+				   1);                  // ripple dB
 
 	if (!cap->capture->Start()) {
 		printf("Unable to start mic capture.\n");
@@ -162,8 +181,12 @@ void LivePublisher::Stop()
 	if (m_rtmp_ptr) {
 		m_rtmp_ptr->Stop();
 	}
+	m_samples = 0;
 	m_start_time = 0;
 	m_push_url = "";
+	m_started = false;
+	m_start_send = false;
+	m_buf.ClearBuffer();
 }
 
 void LivePublisher::Shutdown()
@@ -203,7 +226,6 @@ bool LivePublisher::EnableLookbackCapture(bool bEnable)
 		// lock for buffer get length
 		AutoLock _(m_lock);
 		cap->capture->RegisterCallback(CaptureProc, cap);
-		cap->offset = m_buf.GetBufferLen();
 		cap->slice.ClearBuffer();
 		bRet = cap->capture->Start();
 		cap->active = bRet;
@@ -243,13 +265,15 @@ void LivePublisher::AudioMixer(ulong mixLength)
 	}
 
 	ulong samples = mixLength / (m_format.bits / 8);
+	double result;
 	for (i = 0; i < samples; i++)
 	{
 		// assume all 16 bits
-		((int16 *)data)[i] = ((int16 *)sources)[0];
-		for (j = 1; j < num; j++) {
-			((int16 *)data)[i] += ((int16 *)sources)[j];
+		result = 0;
+		for (j = 0; j < num; j++) {
+			result += ((int16 *)sources[j])[i];
 		}
+		((int16 *)data)[i] = result;
 	}
 
 	m_buf.Write(data, mixLength);
@@ -260,12 +284,33 @@ void LivePublisher::AudioMixer(ulong mixLength)
 
 void LivePublisher::_CaptureProc(uint8 *data, ulong length, LivePublisherCapture *cap)
 {
+	if (cap->type == kMicCapture) {
+		// apply filter
+		int numSamples = length * 8 / m_format.bits / m_format.channels;
+		// assume 16bits
+		int16 **sources = (int16 **)malloc(m_format.channels * sizeof(int16 *));
+		for (int i = 0; i < m_format.channels; i++) {
+			sources[i] = (int16 *)malloc(numSamples * sizeof(int16));
+			for (int j = 0; j < numSamples; j++) {
+				sources[i][j] = ((int16 *)data)[j * 2 + i];
+			}
+		}
+		m_filter.process(numSamples, sources);
+
+		for (int i = 0; i < m_format.channels; i++) {
+			for (int j = 0; j < numSamples; j++) {
+				((int16 *)data)[j * 2 + i] = sources[i][j];
+			}
+			free(sources[i]);
+		}
+		free(sources);
+	}
+
 	AutoLock _(m_lock);
 	int active_count = GetActiveCaptureCount();
 	// TODO: 
-	printf("capture data: %u, channel: %d\n", length, cap->captureChannel);
-	ulong t = RTMP_GetTime() - m_start_time;
-	ulong bytesPerSec = m_format.channels * m_format.sampleRate * m_format.bits / 8;
+	// printf("capture data: %u, channel: %d\n", length, cap->captureChannel);
+	// ulong t = RTMP_GetTime() - m_start_time;
 
 	if (active_count == 1)
 	{
@@ -274,6 +319,7 @@ void LivePublisher::_CaptureProc(uint8 *data, ulong length, LivePublisherCapture
 	else
 	{
 		LivePublisherCapture *cap_ = NULL;
+		bool gotFirstSize = false;
 		ulong minBufferSize = 0;
 
 		cap->slice.Write(data, length);
@@ -282,10 +328,11 @@ void LivePublisher::_CaptureProc(uint8 *data, ulong length, LivePublisherCapture
 		{
 			cap_ = m_captures[i];
 			if (cap_->active) {
-				if (minBufferSize == 0)
+				if (!gotFirstSize)
 				{
 					// first one
 					minBufferSize = (ulong)cap_->slice.GetBufferLen();
+					gotFirstSize = true;
 				}
 				else
 				{
@@ -314,23 +361,30 @@ void LivePublisher::_CaptureProc(uint8 *data, ulong length, LivePublisherCapture
 
 	ulong inputSamples = m_encoder->GetInputSamples();
 	ulong bufferSize = inputSamples * m_format.bits / 8;
+	if (!m_start_send) {
+		ulong bytesPerSec = m_format.channels * m_format.sampleRate * m_format.bits / 8;
+		if (m_buf.GetBufferLen() / bytesPerSec > 5) {
+			m_start_send = true;
+		}
+		else
+		{
+			return;
+		}
+	}
 	if (m_buf.GetBufferLen() > bufferSize) {
-		cap->offset = 0;
 		int nbFrames = m_buf.GetBufferLen() / bufferSize;
+		if (nbFrames <= 0) {
+			return;
+		}
 		for (int i = 0; i < nbFrames; i++) {
-			m_time = t + i * bufferSize * 1000 / bytesPerSec;
 			m_encoder->Encode(m_buf.GetBuffer(i * bufferSize), inputSamples);
 		}
 		ulong remain = m_buf.GetBufferLen() % bufferSize;
 		if (remain > 0) {
 			m_buf.Slice(nbFrames * bufferSize);
-			cap->offset = remain;
 		} else {
 			m_buf.ClearBuffer();
 		}
-	} else {
-		m_buf.Write(data, length);
-		cap->offset = length;
 	}
 }
 
@@ -340,16 +394,23 @@ void LivePublisher::CaptureProc(uint8 *data, ulong length, void *user_data)
 	cap->publisher->_CaptureProc(data, length, cap);
 }
 
-void LivePublisher::EncoderProc(uint8 *data, ulong length, void *user_data)
+void LivePublisher::EncoderProc(uint8 *data, ulong length, ulong samples, void *user_data)
 {
 	LivePublisher *publisher = (LivePublisher *)user_data;
-	AACData *d = (AACData *)malloc(sizeof(AACData));
+	AudioFormat *format = &publisher->m_format;
+	ulong _samples = publisher->m_samples;
 
+	AACData *d = (AACData *)malloc(sizeof(AACData));
 	d->data = (uint8 *)malloc(length);
 	d->length = length;
-	d->timeoffset = publisher->m_time;
+	d->timeoffset = _samples * 1000 / (format->channels * format->sampleRate);
 	memcpy(d->data, data, length);
-	printf("encoded: %u time: %u\n", length, publisher->m_time);
+
+	//fwrite(data, 1, length, fp);
+
+	printf("encoded: %u timeoffset: %u time: %u samples: %u\n", length, d->timeoffset, RTMP_GetTime() - publisher->m_start_time, samples);
+
+	publisher->m_samples = _samples + samples;
 
 	PostThreadMessage(publisher->m_mixer_threadid, LPM_DATA, NULL, (LPARAM)d);
 }
@@ -369,9 +430,12 @@ DWORD LivePublisher::MixerProc(LPVOID context)
 		switch (msg.message)
 		{
 		case LPM_CREATE:
-			publisher->m_rtmp_ptr->Start(publisher->m_push_url.c_str());
-			publisher->m_rtmp_ptr->SendAudioAACHeader(&publisher->m_format);
-			publisher->m_start_time = RTMP_GetTime();
+			if (publisher->m_rtmp_ptr->Start(publisher->m_push_url.c_str())) {
+				if (publisher->m_rtmp_ptr->SendAudioAACHeader(&publisher->m_format)) {
+					publisher->m_started = true;
+					publisher->m_start_time = RTMP_GetTime();
+				}
+			}
 			publisher->m_mixer_event.Set();
 			break;
 		case LPM_DATA: {

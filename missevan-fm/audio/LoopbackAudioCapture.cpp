@@ -8,8 +8,6 @@
 #define REFTIMES_PER_SEC  10000000
 #define REFTIMES_PER_MILLISEC  10000
 
-FILE *fp = NULL;
-
 CLoopbackAudioCapture::CLoopbackAudioCapture(uint32 bufferLength)
 	: CAudioCapture(bufferLength)
 	, _ChatEndpoint(NULL)
@@ -20,13 +18,11 @@ CLoopbackAudioCapture::CLoopbackAudioCapture(uint32 bufferLength)
 	, _AudioSamplesReadyEvent(NULL)
 	, _EnableTransform(false)
 {
-	fp = fopen("D:\\CloudMusic\\t.pcm", "wb+");
 	memset(&_waveFormat, 0, sizeof(_waveFormat));
 }
 
 CLoopbackAudioCapture::~CLoopbackAudioCapture()
 {
-	fclose(fp);
 	Shutdown();
 }
 
@@ -66,8 +62,6 @@ bool CLoopbackAudioCapture::Initialize(AudioFormat *format)
 		return false;
 	}
 
-	_StartEvent.Create(false, false);
-
 	return true;
 }
 
@@ -85,8 +79,6 @@ void CLoopbackAudioCapture::Shutdown()
 		CloseHandle(_AudioSamplesReadyEvent);
 		_AudioSamplesReadyEvent = NULL;
 	}
-
-	_StartEvent.Close();
 
 	SafeRelease(&_ChatEndpoint);
 }
@@ -137,7 +129,7 @@ bool CLoopbackAudioCapture::Start()
 	// AUDCLNT_SESSIONFLAGS_DISPLAY_HIDE | AUDCLNT_STREAMFLAGS_NOPERSIST | 
 	// (uint64)_bufferLength * 10000000 / mixFormat->nAvgBytesPerSec
 	hr = _AudioClient->Initialize(AUDCLNT_SHAREMODE_SHARED,
-		AUDCLNT_STREAMFLAGS_NOPERSIST | AUDCLNT_STREAMFLAGS_LOOPBACK,
+		AUDCLNT_STREAMFLAGS_EVENTCALLBACK | AUDCLNT_STREAMFLAGS_NOPERSIST | AUDCLNT_STREAMFLAGS_LOOPBACK,
 		REFTIMES_PER_SEC, // This parameter is of type REFERENCE_TIME and is expressed in 100-nanosecond units.
 		0, mixFormat, NULL);
 	CoTaskMemFree(mixFormat);
@@ -149,12 +141,12 @@ bool CLoopbackAudioCapture::Start()
 		return false;
 	}
 
-	/*hr = _AudioClient->SetEventHandle(_AudioSamplesReadyEvent);
+	hr = _AudioClient->SetEventHandle(_AudioSamplesReadyEvent);
 	if (FAILED(hr))
 	{
 		printf("Unable to set ready event.\n");
 		return false;
-	}*/
+	}
 
 	hr = _AudioClient->GetService(IID_PPV_ARGS(&_CaptureClient));
 	if (FAILED(hr))
@@ -180,18 +172,18 @@ bool CLoopbackAudioCapture::Start()
 	if (FAILED(hr))
 	{
 		printf("Unable to start chat client.\n");
-		_StartEvent.Set();
 		return false;
 	}
 
-	_StartEvent.Set();
 	return true;
 }
 
 void CLoopbackAudioCapture::Stop()
 {
-	_AudioClient->Stop();
-
+	if (_AudioClient)
+	{
+		_AudioClient->Stop();
+	}
 	if (_ShutdownEvent)
 	{
 		SetEvent(_ShutdownEvent);
@@ -219,76 +211,59 @@ DWORD CLoopbackAudioCapture::WasapiThread(LPVOID Context)
 {
 	bool stillPlaying = true;
 	CLoopbackAudioCapture *pCapture = static_cast<CLoopbackAudioCapture *>(Context);
-	HANDLE waitArray[2] = { pCapture->_ShutdownEvent /*, pCapture->_AudioSamplesReadyEvent */ };
-
-	pCapture->_StartEvent.Wait();
-
 	WAVEFORMATEX *pwfx = &pCapture->_waveFormat;
-	REFERENCE_TIME hnsRequestedDuration = REFTIMES_PER_SEC;
-	REFERENCE_TIME hnsActualDuration;
-	UINT32 packetLength = 0;
-	UINT32 bufferFrameCount;
-	// Get the size of the allocated buffer.
-	HRESULT hr = pCapture->_AudioClient->GetBufferSize(&bufferFrameCount);
-	if (FAILED(hr)) {
-		goto exit_l;
-	}
-
-	// Calculate the actual duration of the allocated buffer.
-	hnsActualDuration = (double)REFTIMES_PER_SEC *
-		bufferFrameCount / pwfx->nSamplesPerSec;
+	HANDLE waitArray[2] = { pCapture->_ShutdownEvent, pCapture->_AudioSamplesReadyEvent };
 
 	while (stillPlaying)
 	{
 		HRESULT hr;
-		DWORD waitResult = WaitForSingleObject(pCapture->_ShutdownEvent, hnsActualDuration / REFTIMES_PER_MILLISEC / 2);
+		DWORD waitResult = WaitForMultipleObjects(2, waitArray, FALSE, INFINITE);
 		switch (waitResult)
 		{
 		case WAIT_OBJECT_0 + 0:
 			stillPlaying = false;       // We're done, exit the loop.
 			break;
-		case WAIT_TIMEOUT: {
+		case WAIT_OBJECT_0 + 1: {
+			//
+			//  Either stream silence to the audio client or ignore the audio samples.
+			//
+			//  Note that we don't check for errors here.  This is because 
+			//      (a) there's no way of reporting the failure
+			//      (b) once the streaming engine has started there's really no way for it to fail.
+			//
+			BYTE *pData;
+			UINT32 framesAvailable;
+			DWORD flags;
 
-			hr = pCapture->_CaptureClient->GetNextPacketSize(&packetLength);
-			if (FAILED(hr)) {
-				goto exit_l;
-			}
+			hr = pCapture->_AudioClient->GetCurrentPadding(&framesAvailable);
+			hr = pCapture->_CaptureClient->GetBuffer(&pData, &framesAvailable, &flags, NULL, NULL);
 
-			while (packetLength != 0)
+			if (flags & AUDCLNT_BUFFERFLAGS_SILENT)
 			{
-				//
-				//  Either stream silence to the audio client or ignore the audio samples.
-				//
-				//  Note that we don't check for errors here.  This is because 
-				//      (a) there's no way of reporting the failure
-				//      (b) once the streaming engine has started there's really no way for it to fail.
-				//
-				BYTE *pData;
-				UINT32 framesAvailable;
-				DWORD flags;
-
-				// hr = pCapture->_AudioClient->GetCurrentPadding(&framesAvailable);
-				hr = pCapture->_CaptureClient->GetBuffer(&pData, &framesAvailable, &flags, NULL, NULL);
-				if (FAILED(hr)) {
-					goto exit_l;
-				}
-
-				if (flags & AUDCLNT_BUFFERFLAGS_SILENT)
-				{
-					// TODO: silent
-				}
-				else if (pCapture->_EnableTransform)
-				{
-					pCapture->_Transform.Encode(pData, framesAvailable * pwfx->nChannels * pwfx->wBitsPerSample / 8);
-				}
-				else if (pCapture->_callback)
-				{
+				if (pCapture->_callback) {
 					AudioFormat *format = &pCapture->_format;
-					pCapture->_callback(pData, framesAvailable * format->channels * format->bits / 8, pCapture->_user_data);
-				}
+					uint32 length = framesAvailable * format->channels * format->bits / 8;
+					pData = (BYTE *)malloc(length);
 
-				hr = pCapture->_CaptureClient->ReleaseBuffer(framesAvailable);
+					// silent data
+					memset(pData, 0, length);
+
+					pCapture->_callback(pData, length, pCapture->_user_data);
+					free(pData);
+				}
+				break;
 			}
+			else if (pCapture->_EnableTransform)
+			{
+				pCapture->_Transform.Encode(pData, framesAvailable * pwfx->nChannels * pwfx->wBitsPerSample / 8);
+			}
+			else if (pCapture->_callback)
+			{
+				AudioFormat *format = &pCapture->_format;
+				pCapture->_callback(pData, framesAvailable * format->channels * format->bits / 8, pCapture->_user_data);
+			}
+
+			hr = pCapture->_CaptureClient->ReleaseBuffer(framesAvailable);
 			break;
 		}
 		}
@@ -298,12 +273,11 @@ exit_l:
 	return 0;
 }
 
-void CLoopbackAudioCapture::TransformProc(uint8 *data, ulong length, void *user_data)
+void CLoopbackAudioCapture::TransformProc(uint8 *data, ulong length, ulong samples, void *user_data)
 {
 	CLoopbackAudioCapture *pCapture = (CLoopbackAudioCapture *)user_data;
 	if (pCapture->_callback)
 	{
 		pCapture->_callback(data, length, pCapture->_user_data);
 	}
-	fwrite(data, sizeof(uint8), length, fp);
 }

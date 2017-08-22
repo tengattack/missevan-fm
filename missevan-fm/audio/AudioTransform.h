@@ -9,7 +9,7 @@
 struct IMFTransform;
 struct IMFMediaType;
 class CAudioTransform;
-typedef void (CALLBACK *AudioTransformCallbackProc)(uint8 *data, ulong length, void *user_data);
+typedef void (CALLBACK *AudioTransformCallbackProc)(uint8 *data, ulong length, ulong samples, void *user_data);
 
 class CAudioTransform : public CCallbackAble<AudioTransformCallbackProc>
 {

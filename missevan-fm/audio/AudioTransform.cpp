@@ -169,7 +169,7 @@ bool CAudioTransform::Encode(uint8 *data, ulong length)
 	SafeRelease(&outputDataBuffer.pSample);
 
 	if (_callback) {
-		_callback(buf.GetBuffer(), buf.GetBufferLen(), _user_data);
+		_callback(buf.GetBuffer(), buf.GetBufferLen(), buf.GetBufferLen() / (_to.bits / 8), _user_data);
 	}
 
 	return true;

@@ -8,6 +8,10 @@
 #include <base/lock.h>
 #include <base/event.h>
 
+/* DSP */
+#include <DSPFilters/Filter.h>
+#include <DSPFilters/ChebyshevI.h>
+
 #include "base/types.h"
 #include "base/SliceBuffer.h"
 #include "audio/common.h"
@@ -29,7 +33,6 @@ typedef struct _LivePublisherCapture {
 	LivePublisherCaptureType type;
 	int captureChannel;
 	bool active;
-	ulong offset;
 	CSliceBuffer slice;
 } LivePublisherCapture;
 
@@ -47,7 +50,10 @@ protected:
 	Event m_mixer_event;
 	Lock m_lock;
 	CSliceBuffer m_buf;
-	ulong m_time;
+	ulong m_samples;
+	bool m_started;
+	bool m_start_send;
+	Dsp::SimpleFilter<Dsp::ChebyshevI::BandStop<3>, 2> m_filter;
 
 	bool m_enable_loopback;
 	LivePublisherCapture* NewCapture(LivePublisherCaptureType type);
@@ -59,7 +65,7 @@ protected:
 	void AudioMixer(ulong mixLength);
 
 	static void CALLBACK CaptureProc(uint8 *data, ulong length, void *user_data);
-	static void CALLBACK EncoderProc(uint8 *data, ulong length, void *user_data);
+	static void CALLBACK EncoderProc(uint8 *data, ulong length, ulong samples, void *user_data);
 	static DWORD CALLBACK MixerProc(LPVOID context);
 
 public:

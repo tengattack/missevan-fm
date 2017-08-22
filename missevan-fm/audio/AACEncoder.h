@@ -9,7 +9,7 @@
 #include "base/types.h"
 #include "common.h"
 
-typedef void (CALLBACK *EncoderCallbackProc)(uint8 *data, ulong length, void *user_data);
+typedef void (CALLBACK *EncoderCallbackProc)(uint8 *data, ulong length, ulong samples, void *user_data);
 
 class CAACEncoder : public CCallbackAble<EncoderCallbackProc>
 {

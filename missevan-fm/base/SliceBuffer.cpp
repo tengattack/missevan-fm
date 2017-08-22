@@ -21,7 +21,9 @@ UINT CSliceBuffer::Slice(UINT start, UINT end)
 	}
 	UINT length = end - start;
 	if (length >= 0) {
-		MoveMemory(m_pBase, m_pBase + start, length);
+		if (start > 0) {
+			MoveMemory(m_pBase, m_pBase + start, length);
+		}
 		m_pPtr = m_pBase + length;
 	} else {
 		ClearBuffer();

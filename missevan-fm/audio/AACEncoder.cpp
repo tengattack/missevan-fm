@@ -60,7 +60,7 @@ int CAACEncoder::Encode(uint8 *data, uint32 samples)
 {
 	int result = faacEncEncode(_hEncoder, (int32_t *)data, samples, _outputBuffer, _maxOutputBytes);
 	if (result > 0 && _callback) {
-		_callback(_outputBuffer, (ulong)result, _user_data);
+		_callback(_outputBuffer, (ulong)result, samples, _user_data);
 	}
 	return result;
 }
