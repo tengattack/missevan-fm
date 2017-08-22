@@ -9,6 +9,7 @@
 #include "Server.h"
 #include "UserAccount.h"
 #include "DeviceManager.h"
+#include "LivePublisher.h"
 #include "MissEvanFMWindow.h"
 
 enum TrayMenuType {
@@ -103,19 +104,31 @@ void CMainTray::UpdateMenu()
 		} else {
 			m_mainMenu->Modify(kTMTUser, L"用户（未登录）");
 		}
-		if (stat & Server::kStatPush) {
+		if (stat & Server::kStatPushConnect || stat & Server::kStatPushLive) {
 			m_pushMenu->Modify(kTMTState, L"推流中");
-			if (m_dm->IsMicOpened()) {
+			if (stat & Server::kStatPushLive) {
+				bool enabled = m_server_ptr->m_publisher_ptr->IsLoopbackEnabled();
 				m_pushMenu->Modify(kTMTAudioMic, L"关闭麦克风");
+				if (enabled) {
+					m_pushMenu->Modify(kTMTAudioHook, L"关闭背景乐");
+				} else {
+					m_pushMenu->Modify(kTMTAudioHook, L"设置背景乐");
+				}
+				m_pushMenu->EnableItem(kTMTAudioMic, false, false);
 			} else {
-				m_pushMenu->Modify(kTMTAudioMic, L"打开麦克风");
+				if (m_dm->IsMicOpened()) {
+					m_pushMenu->Modify(kTMTAudioMic, L"关闭麦克风");
+				}
+				else {
+					m_pushMenu->Modify(kTMTAudioMic, L"打开麦克风");
+				}
+				if (m_dm->IsAudioHooked()) {
+					m_pushMenu->Modify(kTMTAudioHook, L"关闭背景乐");
+				} else {
+					m_pushMenu->Modify(kTMTAudioHook, L"设置背景乐");
+				}
+				m_pushMenu->EnableItem(kTMTAudioMic, true, false);
 			}
-			if (m_dm->IsAudioHooked()) {
-				m_pushMenu->Modify(kTMTAudioHook, L"关闭背景乐");
-			} else {
-				m_pushMenu->Modify(kTMTAudioHook, L"设置背景乐");
-			}
-			m_pushMenu->EnableItem(kTMTAudioMic, true, false);
 			m_pushMenu->EnableItem(kTMTAudioHook, true, false);
 		} else {
 			m_pushMenu->Modify(kTMTState, L"空闲中");
@@ -152,23 +165,35 @@ LRESULT CMainTray::OnTrayMenu(UINT wParam, LONG lParam)
 {
 	switch (wParam) {
 	case kTMTAudioMic: {
-		if (m_dm->IsMicOpened()) {
-			m_dm->CloseMic();
-		} else {
-			m_dm->OpenMic();
+		uint32_t stat = m_server_ptr->GetStat();
+		if (stat & Server::kStatPushConnect) {
+			if (m_dm->IsMicOpened()) {
+				m_dm->CloseMic();
+			} else {
+				m_dm->OpenMic();
+			}
 		}
 	}
 	break;
 	case kTMTAudioHook: {
-		// 
-		if (m_dm->IsAudioHooked()) {
-			m_dm->EndHookAudio();
-		} else {
-			MessageBox(m_hWnd, L"请选择一个程序，本程序将会把其所播放的音乐一并直播，例如网易云音乐。", L"提示", MB_OK);
-			operation::CFileSelect fsel(m_hWnd, operation::kOpen, L"可执行文件(*.exe)|*.exe||", L"请选择一个程序");
-			if (fsel.Select()) {
-				CW2C w2c(fsel.GetPath().c_str());
-				m_dm->StartHookAudio(w2c.c_str());
+		// check live mode
+		uint32_t stat = m_server_ptr->GetStat();
+		if (stat & Server::kStatPushLive) {
+			bool enabled = m_server_ptr->m_publisher_ptr->IsLoopbackEnabled();
+			if (!enabled) {
+				MessageBox(m_hWnd, L"高清模式下，本程序将会把系统播放的声音一并直播。", L"提示", MB_OK);
+			}
+			m_server_ptr->m_publisher_ptr->EnableLookbackCapture(!enabled);
+		} else if (stat & Server::kStatPushConnect) {
+			if (m_dm->IsAudioHooked()) {
+				m_dm->EndHookAudio();
+			} else {
+				MessageBox(m_hWnd, L"请选择一个程序，本程序将会把其所播放的音乐一并直播，例如网易云音乐。", L"提示", MB_OK);
+					operation::CFileSelect fsel(m_hWnd, operation::kOpen, L"可执行文件(*.exe)|*.exe||", L"请选择一个程序");
+				if (fsel.Select()) {
+					CW2C w2c(fsel.GetPath().c_str());
+					m_dm->StartHookAudio(w2c.c_str());
+				}
 			}
 		}
 	}

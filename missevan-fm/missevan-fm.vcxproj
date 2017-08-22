@@ -170,12 +170,12 @@
       <PrecompiledHeader>Use</PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>WIN32;_NO_GDIPLUS_;_CRT_RAND_S;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;_NO_GDIPLUS_;_CRT_RAND_S;NOMINMAX;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>lib_json.lib;libcurl.lib;libssl.lib;libcrypto.lib;libfaac.lib;librtmp.lib;NELivePlayer.lib;nim_cpp_sdk_d.lib;Winmm.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>lib_json.lib;libcurl.lib;libssl.lib;libcrypto.lib;libfaac.lib;librtmp.lib;NELivePlayer.lib;winmm.lib;Mfuuid.lib;Mfplat.lib;wmcodecdspuuid.lib;nim_cpp_sdk_d.lib;Winmm.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='DebugDll|Win32'">
@@ -183,12 +183,12 @@
       <PrecompiledHeader>Use</PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>WIN32;_NO_GDIPLUS_;_CRT_RAND_S;_DEBUG;_MFM_DLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;_NO_GDIPLUS_;_CRT_RAND_S;NOMINMAX;_DEBUG;_MFM_DLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>lib_json.lib;libcurl.lib;libssl.lib;libcrypto.lib;libfaac.lib;librtmp.lib;NELivePlayer.lib;nim_cpp_sdk_d.lib;Winmm.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>lib_json.lib;libcurl.lib;libssl.lib;libcrypto.lib;libfaac.lib;librtmp.lib;NELivePlayer.lib;winmm.lib;Mfuuid.lib;Mfplat.lib;wmcodecdspuuid.lib;nim_cpp_sdk_d.lib;Winmm.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <ModuleDefinitionFile>missevan-fm.def</ModuleDefinitionFile>
     </Link>
   </ItemDefinitionGroup>
@@ -223,7 +223,7 @@
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>WIN32;_NO_GDIPLUS_;_CRT_RAND_S;NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;_NO_GDIPLUS_;_CRT_RAND_S;NOMINMAX;NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
     </ClCompile>
     <Link>
@@ -231,7 +231,7 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalDependencies>lib_json.lib;libcurl.lib;libssl.lib;libcrypto.lib;libfaac.lib;librtmp.lib;NELivePlayer.lib;nim_cpp_sdk.lib;Ole32.lib;Shell32.lib;User32.lib;Gdi32.lib;Winmm.lib</AdditionalDependencies>
+      <AdditionalDependencies>lib_json.lib;libcurl.lib;libssl.lib;libcrypto.lib;libfaac.lib;librtmp.lib;NELivePlayer.lib;winmm.lib;Mfuuid.lib;Mfplat.lib;wmcodecdspuuid.lib;nim_cpp_sdk.lib;Ole32.lib;Shell32.lib;User32.lib;Gdi32.lib;Winmm.lib</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='ReleaseDll|Win32'">
@@ -241,7 +241,7 @@
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>WIN32;_NO_GDIPLUS_;_CRT_RAND_S;NDEBUG;_MFM_DLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;_NO_GDIPLUS_;_CRT_RAND_S;NOMINMAX;NDEBUG;_MFM_DLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
     </ClCompile>
     <Link>
@@ -249,7 +249,7 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalDependencies>lib_json.lib;libcurl.lib;libssl.lib;libcrypto.lib;libfaac.lib;librtmp.lib;NELivePlayer.lib;nim_cpp_sdk.lib;Ole32.lib;Shell32.lib;User32.lib;Gdi32.lib;Winmm.lib</AdditionalDependencies>
+      <AdditionalDependencies>lib_json.lib;libcurl.lib;libssl.lib;libcrypto.lib;libfaac.lib;librtmp.lib;NELivePlayer.lib;winmm.lib;Mfuuid.lib;Mfplat.lib;wmcodecdspuuid.lib;nim_cpp_sdk.lib;Ole32.lib;Shell32.lib;User32.lib;Gdi32.lib;Winmm.lib</AdditionalDependencies>
       <ModuleDefinitionFile>missevan-fm.def</ModuleDefinitionFile>
     </Link>
   </ItemDefinitionGroup>
@@ -291,6 +291,7 @@
   <ItemGroup>
     <ClInclude Include="audio\AACEncoder.h" />
     <ClInclude Include="audio\AudioCapture.h" />
+    <ClInclude Include="audio\AudioTransform.h" />
     <ClInclude Include="audio\common.h" />
     <ClInclude Include="audio\LoopbackAudioCapture.h" />
     <ClInclude Include="audio\MicAudioCapture.h" />
@@ -320,6 +321,7 @@
     <ClCompile Include="..\..\sdks\tengattack\cuteui\base\base_util.cc" />
     <ClCompile Include="audio\AACEncoder.cpp" />
     <ClCompile Include="audio\AudioCapture.cpp" />
+    <ClCompile Include="audio\AudioTransform.cpp" />
     <ClCompile Include="audio\LoopbackAudioCapture.cpp" />
     <ClCompile Include="audio\MicAudioCapture.cpp" />
     <ClCompile Include="base\global.cpp" />

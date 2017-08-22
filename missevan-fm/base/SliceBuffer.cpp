@@ -14,11 +14,18 @@ CSliceBuffer::~CSliceBuffer()
 
 UINT CSliceBuffer::Slice(UINT start, UINT end)
 {
-	if (end < start)
+	if (end < start) {
+		// TODO: assert here
+		ClearBuffer();
 		return 0;
+	}
 	UINT length = end - start;
-	MoveMemory(m_pBase, m_pBase + start, length);
-	m_pPtr = m_pBase + length;
+	if (length >= 0) {
+		MoveMemory(m_pBase, m_pBase + start, length);
+		m_pPtr = m_pBase + length;
+	} else {
+		ClearBuffer();
+	}
 	return length;
 }
 

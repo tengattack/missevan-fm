@@ -6,8 +6,10 @@
 #include <vector>
 #include <base/basictypes.h>
 #include <base/lock.h>
+#include <base/event.h>
 
 #include "base/types.h"
+#include "base/SliceBuffer.h"
 #include "audio/common.h"
 
 #include "base/Rtmp.h"
@@ -26,6 +28,9 @@ typedef struct _LivePublisherCapture {
 	CAudioCapture *capture;
 	LivePublisherCaptureType type;
 	int captureChannel;
+	bool active;
+	ulong offset;
+	CSliceBuffer slice;
 } LivePublisherCapture;
 
 class LivePublisher
@@ -35,28 +40,40 @@ protected:
 	AudioFormat m_format;
 	uint32 m_start_time;
 	CAACEncoder *m_encoder;
-	std::vector<LivePublisherCapture> m_captures;
+	std::vector<LivePublisherCapture *> m_captures;
 	std::string m_push_url;
 	HANDLE m_mixer_thread;
 	DWORD m_mixer_threadid;
+	Event m_mixer_event;
 	Lock m_lock;
+	CSliceBuffer m_buf;
+	ulong m_time;
 
 	bool m_enable_loopback;
 	LivePublisherCapture* NewCapture(LivePublisherCaptureType type);
 	LivePublisherCapture* GetCapture(LivePublisherCaptureType type);
+	int GetActiveCaptureCount();
 	uint32 GetBufferLength();
 
 	void _CaptureProc(uint8 *data, ulong length, LivePublisherCapture *cap);
+	void AudioMixer(ulong mixLength);
 
 	static void CALLBACK CaptureProc(uint8 *data, ulong length, void *user_data);
 	static void CALLBACK EncoderProc(uint8 *data, ulong length, void *user_data);
 	static DWORD CALLBACK MixerProc(LPVOID context);
 
 public:
+	typedef struct _AACData {
+		uint8 *data;
+		int length;
+		ulong timeoffset;
+	} AACData;
+
 	LivePublisher();
 	~LivePublisher();
 
 	bool IsStreaming();
+	bool IsLoopbackEnabled();
 
 	bool Start(const std::string& push_url);
 	void Stop();

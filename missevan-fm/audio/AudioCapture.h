@@ -16,12 +16,13 @@ protected:
 
 	// inputSamples * 96
 	ulong _bufferLength;
+	bool _Initialize(AudioFormat *format);
 
 public:
 	CAudioCapture(ulong bufferLength);
 	virtual ~CAudioCapture();
 
-	bool Initialize(AudioFormat *format);
+	virtual bool Initialize(AudioFormat *format) = 0;
 	virtual void Shutdown() = 0;
 	virtual bool Start() = 0;
 	virtual void Stop() = 0;

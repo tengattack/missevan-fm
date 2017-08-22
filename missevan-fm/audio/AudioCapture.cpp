@@ -13,7 +13,7 @@ CAudioCapture::~CAudioCapture()
 {
 }
 
-bool CAudioCapture::Initialize(AudioFormat *format)
+bool CAudioCapture::_Initialize(AudioFormat *format)
 {
 	memcpy(&_format, format, sizeof(_format));
 	return true;

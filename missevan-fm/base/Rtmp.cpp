@@ -80,15 +80,15 @@ int CRtmp::SendAudioAACHeader(AudioFormat *format)
 	packet.m_body[1] = 0x00;
 	if (format->sampleRate == 48000)
 	{
-		// 0x12 0x10 => 44.1kHz
-		packet.m_body[2] = 0x12;
-		packet.m_body[3] = 0x10;
-	}
-	else if (format->sampleRate == 44100)
-	{
 		// 0x11 0x90 => 48kHz
 		packet.m_body[2] = 0x11;
 		packet.m_body[3] = 0x90;
+	}
+	else if (format->sampleRate == 44100)
+	{
+		// 0x12 0x10 => 44.1kHz
+		packet.m_body[2] = 0x12;
+		packet.m_body[3] = 0x10;
 	}
 	else
 	{

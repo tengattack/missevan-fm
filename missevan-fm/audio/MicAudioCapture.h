@@ -20,6 +20,7 @@ protected:
 	WORD *  _waveBuffer2;
 
 	WAVEFORMATEX _waveFormat;
+	bool _stopped;
 
 	static void CALLBACK waveInProc(HWAVEIN hwi, UINT uMsg, DWORD dwInstance, DWORD dwParam1, DWORD dwParam2);
 public:

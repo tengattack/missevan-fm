@@ -7,6 +7,7 @@ CMicAudioCapture::CMicAudioCapture(uint32 bufferLength)
 	, _waveHandle(NULL)
 	, _waveBuffer1(NULL)
 	, _waveBuffer2(NULL)
+	, _stopped(false)
 {
 	memset(&_waveHeader1, 0, sizeof(_waveHeader1));
 	memset(&_waveHeader2, 0, sizeof(_waveHeader2));
@@ -20,7 +21,7 @@ CMicAudioCapture::~CMicAudioCapture()
 
 bool CMicAudioCapture::Initialize(AudioFormat *format)
 {
-	CAudioCapture::Initialize(format);
+	CAudioCapture::_Initialize(format);
 
 	_waveFormat.wFormatTag = WAVE_FORMAT_PCM;
 	_waveFormat.nChannels = format->channels;
@@ -98,6 +99,7 @@ bool CMicAudioCapture::Start()
 		return false;
 	}
 
+	_stopped = false;
 	mmr = waveInStart(_waveHandle);
 	if (mmr != MMSYSERR_NOERROR)
 	{
@@ -111,10 +113,11 @@ void CMicAudioCapture::Stop()
 {
 	if (_waveHandle)
 	{
+		_stopped = true;
 		MMRESULT mmr = waveInStop(_waveHandle);
 		if (mmr != MMSYSERR_NOERROR)
 		{
-			printf("Failed to start\n");
+			printf("Failed to stop\n");
 		}
 
 		mmr = waveInReset(_waveHandle);
@@ -157,16 +160,21 @@ void CMicAudioCapture::waveInProc(HWAVEIN hwi, UINT uMsg, DWORD dwInstance, DWOR
 
 		HWAVEIN waveHandle = hwi;
 		LPWAVEHDR waveHeader = reinterpret_cast<LPWAVEHDR>(dwParam1);
-		CMicAudioCapture *pMicCapture = reinterpret_cast<CMicAudioCapture *>(dwParam2);
+		CMicAudioCapture *pMicCapture = reinterpret_cast<CMicAudioCapture *>(dwInstance);
+
+		if (pMicCapture->_stopped)
+		{
+			break;
+		}
 
 		if (pMicCapture->_callback)
 		{
 			pMicCapture->_callback((uint8 *)waveHeader->lpData, waveHeader->dwBytesRecorded, pMicCapture->_user_data);
 		}
 
-		if (pMicCapture->_waveHandle)
+		if (hwi)
 		{
-			mmr = waveInAddBuffer(pMicCapture->_waveHandle, waveHeader, sizeof(WAVEHDR));
+			mmr = waveInAddBuffer(hwi, waveHeader, sizeof(WAVEHDR));
 			if (mmr != MMSYSERR_NOERROR)
 			{
 				printf("Failed to add buffer\n");

@@ -219,13 +219,13 @@ void Server::onWebSocketClose(Server* s, websocketpp::connection_hdl hdl)
 uint32_t Server::GetStat()
 {
 	uint32_t stat = (m_user_ptr->logged() == UserAccount::kUserNone) ? kStatNone : kStatUser;
+	stat |= (m_player_ptr->stat() > LivePlayer::kStatReady) ? kStatPlayer : kStatNone;
 	if (m_cm_ptr->stat() != ChatManager::kChatNone) {
-		stat |= kStatPush;
+		stat |= kStatPushConnect;
 	}
 	if (m_publisher_ptr->IsStreaming()) {
-		stat |= kStatPush;
+		stat |= kStatPushLive;
 	}
-	stat |= (m_player_ptr->stat() > LivePlayer::kStatReady) ? kStatPlayer : kStatNone;
 	return stat;
 }
 
@@ -258,7 +258,7 @@ void Server::onAction(const SAction action, Json::Value &value, websocketpp::con
 		return;
 	}
 	if ((!room_op && !logout_op && !player_op && !allow_op && (stat & kStatUser))
-			|| (!stop_push_op && !logout_op && !player_op && !allow_op && (stat & kStatPush))) {
+			|| (!stop_push_op && !logout_op && !player_op && !allow_op && (stat & kStatPushLive || stat & kStatPushConnect))) {
 		ret_value["code"] = kSForbidden;
 		ret_value["action"] = GetActionText(action);
 		ret_value["status"] = stat;
@@ -291,10 +291,12 @@ void Server::onAction(const SAction action, Json::Value &value, websocketpp::con
 			});
 		}
 	} else if (action == kActionLogout) {
-		if (stat & kStatPush) {
-			// leave room first
-			m_cm_ptr->LeaveRoom();
+		// stop push first
+		if (stat & kStatPushLive) {
 			m_publisher_ptr->Stop();
+		}
+		if (stat & kStatPushConnect) {
+			m_cm_ptr->LeaveRoom();
 		}
 		m_user_ptr->Logout();
 		success = true;
@@ -326,7 +328,6 @@ void Server::onAction(const SAction action, Json::Value &value, websocketpp::con
 			if (stat & kStatPlayer) {
 				m_player_ptr->Stop();
 			}
-			m_push_type = "";
 
 			auto opcode = msg->get_opcode();
 			if (type == "live") {
@@ -337,10 +338,6 @@ void Server::onAction(const SAction action, Json::Value &value, websocketpp::con
 				ret_value["code"] = bRet ? 200 : 500;
 				ret_value["action"] = GetActionText(kActionStartPush);
 				m_server.send(hdl, fs.write(ret_value), opcode);
-
-				if (bRet) {
-					m_push_type = type;
-				}
 			}
 			else if (type == "connect")
 			{
@@ -351,7 +348,6 @@ void Server::onAction(const SAction action, Json::Value &value, websocketpp::con
 					ret_value["action"] = GetActionText(kActionStartPush);
 					m_server.send(hdl, fs.write(ret_value), opcode);
 				});
-				m_push_type = type;
 			}
 			else
 			{
@@ -381,14 +377,13 @@ void Server::onAction(const SAction action, Json::Value &value, websocketpp::con
 		if (!room_id) {
 			params_error = true;
 		} else {
-			if (m_push_type == "live") {
+			if (stat & kStatPushLive) {
 				m_publisher_ptr->Stop();
 			}
-			else if (m_push_type == "connect")
+			if (stat & kStatPushConnect)
 			{
 				m_cm_ptr->LeaveRoom();
 			}
-			m_push_type = "";
 			success = true;
 		}
 	} else if (action == kActionStartPull) {

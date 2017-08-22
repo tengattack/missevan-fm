@@ -26,7 +26,7 @@ bool CAACEncoder::Initialize(AudioFormat *format, ulong targetBitrate)
 	faacEncConfigurationPtr faacConfig;
 	int result;
 
-	if (format->bits != 16 || format->bits != 32) {
+	if (format->bits != 16 && format->bits != 32) {
 		return false;
 	}
 

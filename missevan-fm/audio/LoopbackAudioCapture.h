@@ -3,11 +3,12 @@
 #define _LOOPBACK_AUDIO_CAPTURE_H_
 #pragma once
 
-
+#include <base/event.h>
 #include <MMDeviceAPI.h>
 #include <AudioClient.h>
 
 #include "AudioCapture.h"
+#include "AudioTransform.h"
 
 class CLoopbackAudioCapture :
 	public CAudioCapture
@@ -17,12 +18,19 @@ protected:
 	IMMDevice *_ChatEndpoint;
 	IAudioClient *_AudioClient;
 	IAudioCaptureClient *_CaptureClient;
+	WAVEFORMATEX _waveFormat;
 
 	HANDLE _ChatThread;
 	HANDLE _ShutdownEvent;
 	HANDLE _AudioSamplesReadyEvent;
+	Event _StartEvent;
+
+	CAudioTransform _Transform;
+	bool _EnableTransform;
 
 	static DWORD CALLBACK WasapiThread(LPVOID Context);
+	static void CALLBACK TransformProc(uint8 *data, ulong length, void *user_data);
+
 public:
 	CLoopbackAudioCapture(uint32 bufferLength);
 	~CLoopbackAudioCapture();

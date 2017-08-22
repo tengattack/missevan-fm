@@ -1,6 +1,8 @@
 #include "stdafx.h"
 #include "DeviceManager.h"
 
+#include "audio/AudioTransform.h"
+
 DeviceManager *DeviceManager::deviceManager = NULL;
 
 DeviceManager *DeviceManager::GetInstance()
@@ -14,10 +16,12 @@ void DeviceManager::Init()
 	{
 		deviceManager = new DeviceManager();
 	}
+	CAudioTransform::Init();
 }
 
 void DeviceManager::Cleanup()
 {
+	CAudioTransform::Cleanup();
 	if (deviceManager != NULL)
 	{
 		delete deviceManager;

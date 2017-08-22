@@ -102,6 +102,9 @@
     <ClInclude Include="LivePublisher.h">
       <Filter>头文件</Filter>
     </ClInclude>
+    <ClInclude Include="audio\AudioTransform.h">
+      <Filter>audio</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">
@@ -172,6 +175,9 @@
     </ClCompile>
     <ClCompile Include="LivePublisher.cpp">
       <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="audio\AudioTransform.cpp">
+      <Filter>audio</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

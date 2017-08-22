@@ -35,8 +35,9 @@ public:
 	enum SStat {
 		kStatNone = 0x00,
 		kStatUser = 0x01,
-		kStatPush = 0x02,
-		kStatPlayer = 0x04,
+		kStatPlayer = 0x02,
+		kStatPushLive = 0x04,
+		kStatPushConnect = 0x08,
 	};
 	enum SAction {
 		kActionNone = -1,
@@ -82,7 +83,6 @@ protected:
 	DeviceManager *m_dm_ptr;
 	LivePlayer *m_player_ptr;
 	LivePublisher *m_publisher_ptr;
-	std::string m_push_type;
 	websocketpp::connection_hdl m_handling_hdl;
 	CBuffer *m_certs_buf;
 	CBuffer *m_dh_buf;

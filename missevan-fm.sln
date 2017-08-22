@@ -14,14 +14,20 @@ Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
 		Debug|x86 = Debug|x86
+		DebugDll|x64 = DebugDll|x64
+		DebugDll|x86 = DebugDll|x86
 		Release|x64 = Release|x64
 		Release|x86 = Release|x86
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
 		{741A3661-B1EB-451C-9E57-FB5D8D092558}.Debug|x64.ActiveCfg = Debug|x64
 		{741A3661-B1EB-451C-9E57-FB5D8D092558}.Debug|x64.Build.0 = Debug|x64
-		{741A3661-B1EB-451C-9E57-FB5D8D092558}.Debug|x86.ActiveCfg = DebugDll|Win32
-		{741A3661-B1EB-451C-9E57-FB5D8D092558}.Debug|x86.Build.0 = DebugDll|Win32
+		{741A3661-B1EB-451C-9E57-FB5D8D092558}.Debug|x86.ActiveCfg = Debug|Win32
+		{741A3661-B1EB-451C-9E57-FB5D8D092558}.Debug|x86.Build.0 = Debug|Win32
+		{741A3661-B1EB-451C-9E57-FB5D8D092558}.DebugDll|x64.ActiveCfg = DebugDll|x64
+		{741A3661-B1EB-451C-9E57-FB5D8D092558}.DebugDll|x64.Build.0 = DebugDll|x64
+		{741A3661-B1EB-451C-9E57-FB5D8D092558}.DebugDll|x86.ActiveCfg = DebugDll|Win32
+		{741A3661-B1EB-451C-9E57-FB5D8D092558}.DebugDll|x86.Build.0 = DebugDll|Win32
 		{741A3661-B1EB-451C-9E57-FB5D8D092558}.Release|x64.ActiveCfg = Release|x64
 		{741A3661-B1EB-451C-9E57-FB5D8D092558}.Release|x64.Build.0 = Release|x64
 		{741A3661-B1EB-451C-9E57-FB5D8D092558}.Release|x86.ActiveCfg = ReleaseDll|Win32
@@ -30,6 +36,10 @@ Global
 		{11CCBEFD-76E7-4316-AF23-F54FDF8F65BE}.Debug|x64.Build.0 = Debug|x64
 		{11CCBEFD-76E7-4316-AF23-F54FDF8F65BE}.Debug|x86.ActiveCfg = Debug|Win32
 		{11CCBEFD-76E7-4316-AF23-F54FDF8F65BE}.Debug|x86.Build.0 = Debug|Win32
+		{11CCBEFD-76E7-4316-AF23-F54FDF8F65BE}.DebugDll|x64.ActiveCfg = DebugDll|x64
+		{11CCBEFD-76E7-4316-AF23-F54FDF8F65BE}.DebugDll|x64.Build.0 = DebugDll|x64
+		{11CCBEFD-76E7-4316-AF23-F54FDF8F65BE}.DebugDll|x86.ActiveCfg = DebugDll|Win32
+		{11CCBEFD-76E7-4316-AF23-F54FDF8F65BE}.DebugDll|x86.Build.0 = DebugDll|Win32
 		{11CCBEFD-76E7-4316-AF23-F54FDF8F65BE}.Release|x64.ActiveCfg = Release|x64
 		{11CCBEFD-76E7-4316-AF23-F54FDF8F65BE}.Release|x64.Build.0 = Release|x64
 		{11CCBEFD-76E7-4316-AF23-F54FDF8F65BE}.Release|x86.ActiveCfg = Release|Win32
