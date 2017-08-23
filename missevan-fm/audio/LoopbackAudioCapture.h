@@ -25,8 +25,10 @@ protected:
 
 	CAudioTransform _Transform;
 	bool _EnableTransform;
+	bool _EventCallback;
 
 	static DWORD CALLBACK WasapiThread(LPVOID Context);
+	static DWORD CALLBACK WasapiEventThread(LPVOID Context);
 	static void CALLBACK TransformProc(uint8 *data, ulong length, ulong samples, void *user_data);
 
 public:

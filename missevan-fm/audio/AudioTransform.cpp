@@ -8,8 +8,6 @@
 #include <atlbase.h>
 #include <wmcodecdsp.h>
 
-#define HFG(x) if (FAILED(x)) goto exit_l;
-
 CAudioTransform::CAudioTransform()
 	: CCallbackAble()
 	, _pTransform(NULL)

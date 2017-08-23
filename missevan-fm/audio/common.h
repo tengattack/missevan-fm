@@ -6,6 +6,8 @@
 #include <stdint.h>
 #include <base/basictypes.h>
 
+#define HFG(x) if (FAILED(x)) goto exit_l;
+
 typedef struct _AudioFormat {
 	int8      channels;
 	uint32    sampleRate;

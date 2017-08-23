@@ -17,6 +17,7 @@ CLoopbackAudioCapture::CLoopbackAudioCapture(uint32 bufferLength)
 	, _ShutdownEvent(NULL)
 	, _AudioSamplesReadyEvent(NULL)
 	, _EnableTransform(false)
+	, _EventCallback(false)
 {
 	memset(&_waveFormat, 0, sizeof(_waveFormat));
 }
@@ -26,9 +27,64 @@ CLoopbackAudioCapture::~CLoopbackAudioCapture()
 	Shutdown();
 }
 
+typedef LONG NTSTATUS, *PNTSTATUS;
+#define STATUS_SUCCESS (0x00000000)
+
+typedef NTSTATUS (WINAPI* RtlGetVersionPtr)(PRTL_OSVERSIONINFOW);
+
+bool GetRealOSVersion(RTL_OSVERSIONINFOW *provi)
+{
+	HMODULE hMod = ::GetModuleHandleW(L"ntdll.dll");
+	if (hMod) {
+		RtlGetVersionPtr fxPtr = (RtlGetVersionPtr)::GetProcAddress(hMod, "RtlGetVersion");
+		if (fxPtr != nullptr) {
+			RTL_OSVERSIONINFOW rovi = { 0 };
+			rovi.dwOSVersionInfoSize = sizeof(rovi);
+			if (STATUS_SUCCESS == fxPtr(&rovi)) {
+				memcpy(provi, &rovi, sizeof(RTL_OSVERSIONINFOW));
+				return true;
+			}
+		}
+	}
+	return false;
+}
+
+//
+//  This sample only works on Windows 7
+//
+ulong IsWin7OrLater()
+{
+	bool bWin7OrLater = true;
+
+	OSVERSIONINFO ver = {};
+	ver.dwOSVersionInfoSize = sizeof(ver);
+
+	if (GetVersionEx(&ver)) {
+		bWin7OrLater = (ver.dwMajorVersion > 6) ||
+			((ver.dwMajorVersion == 6) && (ver.dwMinorVersion >= 1));
+	}
+
+	if (bWin7OrLater) {
+		RTL_OSVERSIONINFOW rovi;
+		if (GetRealOSVersion(&rovi)) {
+			return rovi.dwMajorVersion;
+		}
+	}
+
+	return bWin7OrLater ? 7 : 0;
+}
+
 bool CLoopbackAudioCapture::Initialize(AudioFormat *format)
 {
 	CAudioCapture::_Initialize(format);
+
+	ulong osVersion = IsWin7OrLater();
+	if (osVersion < 6) {
+		return false;
+	} else if (osVersion >= 10) {
+		// loopback event callback only works in Windows 10
+		_EventCallback = true;
+	}
 
 	IMMDeviceEnumerator *deviceEnumerator;
 	HRESULT hr = CoCreateInstance(__uuidof(MMDeviceEnumerator), NULL, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&deviceEnumerator));
@@ -99,14 +155,12 @@ bool CLoopbackAudioCapture::Start()
 		return false;
 	}
 
-	bool initialized = false;
-	memcpy(&_waveFormat, mixFormat, sizeof(_waveFormat));
-
 	if (mixFormat->wFormatTag != WAVE_FORMAT_PCM
-		|| _waveFormat.nSamplesPerSec != _format.sampleRate
-		|| _waveFormat.nChannels != _format.channels
-		|| _waveFormat.wBitsPerSample != _format.bits)
+		|| mixFormat->nSamplesPerSec != _format.sampleRate
+		|| mixFormat->nChannels != _format.channels
+		|| mixFormat->wBitsPerSample != _format.bits)
 	{
+		WAVEFORMATEXTENSIBLE *cloestWaveFormat = NULL;
 		_waveFormat.wFormatTag = WAVE_FORMAT_PCM;
 		_waveFormat.nSamplesPerSec = _format.sampleRate;
 		_waveFormat.nChannels = _format.channels;
@@ -116,12 +170,14 @@ bool CLoopbackAudioCapture::Start()
 		_waveFormat.cbSize = 0;
 
 		// try initialize for specify format
-		hr = _AudioClient->Initialize(AUDCLNT_SHAREMODE_SHARED,
-			AUDCLNT_STREAMFLAGS_EVENTCALLBACK | AUDCLNT_STREAMFLAGS_NOPERSIST | AUDCLNT_STREAMFLAGS_LOOPBACK,
-			REFTIMES_PER_SEC, // This parameter is of type REFERENCE_TIME and is expressed in 100-nanosecond units.
-			0, &_waveFormat, NULL);
+		hr = _AudioClient->IsFormatSupported(AUDCLNT_SHAREMODE_SHARED, &_waveFormat, (WAVEFORMATEX **)&cloestWaveFormat);
 
-		if (FAILED(hr)) {
+		if (hr == S_OK) {
+			// the format is supported
+			memcpy(mixFormat, &_waveFormat, sizeof(_waveFormat));
+		} else {
+			memcpy(&_waveFormat, mixFormat, sizeof(_waveFormat));
+
 			if (!_Transform.Initialize(mixFormat, &_format))
 			{
 				printf("Unable to initialize audio transform.\n");
@@ -138,9 +194,9 @@ bool CLoopbackAudioCapture::Start()
 
 			_EnableTransform = true;
 		}
-		else
-		{
-			initialized = true;
+
+		if (cloestWaveFormat) {
+			CoTaskMemFree(cloestWaveFormat);
 		}
 	}
 	
@@ -149,15 +205,13 @@ bool CLoopbackAudioCapture::Start()
 	//  our samples ready event handle, retrieve a capture/render client for the transport, create the chat thread
 	//  and start the audio engine.
 	//
-	if (!initialized) {
-		// REFTIMES_PER_SEC
-		// AUDCLNT_SESSIONFLAGS_DISPLAY_HIDE | AUDCLNT_STREAMFLAGS_NOPERSIST | 
-		// (uint64)_bufferLength * 10000000 / mixFormat->nAvgBytesPerSec
-		hr = _AudioClient->Initialize(AUDCLNT_SHAREMODE_SHARED,
-			AUDCLNT_STREAMFLAGS_EVENTCALLBACK | AUDCLNT_STREAMFLAGS_NOPERSIST | AUDCLNT_STREAMFLAGS_LOOPBACK,
-			REFTIMES_PER_SEC, // This parameter is of type REFERENCE_TIME and is expressed in 100-nanosecond units.
-			0, mixFormat, NULL);
-	}
+	// REFTIMES_PER_SEC
+	// AUDCLNT_SESSIONFLAGS_DISPLAY_HIDE | AUDCLNT_STREAMFLAGS_NOPERSIST | 
+	// (uint64)_bufferLength * 10000000 / mixFormat->nAvgBytesPerSec
+	hr = _AudioClient->Initialize(AUDCLNT_SHAREMODE_SHARED,
+		(_EventCallback ? AUDCLNT_STREAMFLAGS_EVENTCALLBACK : 0) | AUDCLNT_STREAMFLAGS_NOPERSIST | AUDCLNT_STREAMFLAGS_LOOPBACK,
+		REFTIMES_PER_SEC, // This parameter is of type REFERENCE_TIME and is expressed in 100-nanosecond units.
+		0, mixFormat, NULL);
 
 	CoTaskMemFree(mixFormat);
 	mixFormat = NULL;
@@ -168,11 +222,14 @@ bool CLoopbackAudioCapture::Start()
 		return false;
 	}
 
-	hr = _AudioClient->SetEventHandle(_AudioSamplesReadyEvent);
-	if (FAILED(hr))
+	if (_EventCallback)
 	{
-		printf("Unable to set ready event.\n");
-		return false;
+		hr = _AudioClient->SetEventHandle(_AudioSamplesReadyEvent);
+		if (FAILED(hr))
+		{
+			printf("Unable to set ready event.\n");
+			return false;
+		}
 	}
 
 	hr = _AudioClient->GetService(IID_PPV_ARGS(&_CaptureClient));
@@ -185,21 +242,23 @@ bool CLoopbackAudioCapture::Start()
 	//
 	//  Now create the thread which is going to drive the "Chat".
 	//
-	_ChatThread = CreateThread(NULL, 0, WasapiThread, this, 0, NULL);
+	_ChatThread = CreateThread(NULL, 0, _EventCallback ? WasapiEventThread : WasapiThread, this, 0, NULL);
 	if (_ChatThread == NULL)
 	{
 		printf("Unable to create transport thread.\n");
 		return false;
 	}
 
-	//
-	//  We're ready to go, start the chat!
-	//
-	hr = _AudioClient->Start();
-	if (FAILED(hr))
-	{
-		printf("Unable to start chat client.\n");
-		return false;
+	if (_EventCallback) {
+		//
+		//  We're ready to go, start the chat!
+		//
+		hr = _AudioClient->Start();
+		if (FAILED(hr))
+		{
+			printf("Unable to start chat client.\n");
+			return false;
+		}
 	}
 
 	return true;
@@ -235,6 +294,96 @@ void CLoopbackAudioCapture::Stop()
 }
 
 DWORD CLoopbackAudioCapture::WasapiThread(LPVOID Context)
+{
+	CLoopbackAudioCapture *pCapture = static_cast<CLoopbackAudioCapture *>(Context);
+
+	bool stillPlaying = true;
+	WAVEFORMATEX *pwfx = &pCapture->_waveFormat;
+	HANDLE _ShutdownEvent = pCapture->_ShutdownEvent;
+	REFERENCE_TIME hnsRequestedDuration = REFTIMES_PER_SEC;
+	REFERENCE_TIME hnsActualDuration;
+	UINT32 bufferFrameCount;
+	UINT32 framesAvailable;
+	UINT32 packetLength = 0;
+	HRESULT hr;
+	BYTE *pData;
+	DWORD flags;
+
+	hr = pCapture->_AudioClient->GetBufferSize(&bufferFrameCount);
+	if (FAILED(hr))
+	{
+		printf("Unable to get buffer size.\n");
+		goto exit_l;
+	}
+
+	// Calculate the actual duration of the allocated buffer.
+	hnsActualDuration = (double)REFTIMES_PER_SEC *
+		bufferFrameCount / pwfx->nSamplesPerSec;
+
+	hr = pCapture->_AudioClient->Start();
+	if (FAILED(hr))
+	{
+		printf("Unable to start chat client.\n");
+		goto exit_l;
+	}
+
+
+	while (stillPlaying)
+	{
+		// Sleep for half the buffer duration.
+		DWORD waitResult = WaitForSingleObject(_ShutdownEvent, hnsActualDuration / REFTIMES_PER_MILLISEC / 2);
+		switch (waitResult) {
+		case WAIT_OBJECT_0:
+			stillPlaying = false;
+			break;
+		case WAIT_TIMEOUT: {
+
+			HFG(pCapture->_CaptureClient->GetNextPacketSize(&packetLength));
+
+			while (packetLength != 0)
+			{
+				// Get the available data in the shared buffer.
+				HFG(pCapture->_CaptureClient->GetBuffer(
+					&pData,
+					&framesAvailable,
+					&flags, NULL, NULL));
+
+				if (flags & AUDCLNT_BUFFERFLAGS_SILENT)
+				{
+					if (pCapture->_callback) {
+						AudioFormat *format = &pCapture->_format;
+						uint32 length = framesAvailable * format->channels * format->bits / 8;
+						pCapture->_callback(NULL, length, pCapture->_user_data);
+					}
+				}
+				else if (pCapture->_EnableTransform)
+				{
+					pCapture->_Transform.Encode(pData, framesAvailable * pwfx->nChannels * pwfx->wBitsPerSample / 8);
+				}
+				else if (pCapture->_callback)
+				{
+					AudioFormat *format = &pCapture->_format;
+					pCapture->_callback(pData, framesAvailable * format->channels * format->bits / 8, pCapture->_user_data);
+				}
+
+				HFG(pCapture->_CaptureClient->ReleaseBuffer(framesAvailable));
+				HFG(pCapture->_CaptureClient->GetNextPacketSize(&packetLength));
+			}
+
+			break;
+		}
+		}
+	}
+
+	return 0;
+
+exit_l:
+	CloseHandle(pCapture->_ChatThread);
+	pCapture->_ChatThread = NULL;
+	return 1;
+}
+
+DWORD CLoopbackAudioCapture::WasapiEventThread(LPVOID Context)
 {
 	bool stillPlaying = true;
 	CLoopbackAudioCapture *pCapture = static_cast<CLoopbackAudioCapture *>(Context);
