@@ -237,10 +237,16 @@ void Server::onAction(const SAction action, Json::Value &value, websocketpp::con
 	Json::Value ret_value;
 
 	if (action == kActionCheck) {
+		Json::Value supportFeatures;
+		supportFeatures.append("live");
+		supportFeatures.append("connect");
+		supportFeatures.append("player");
+
 		ret_value["code"] = kSOk;
 		ret_value["action"] = GetActionText(action);
 		ret_value["status"] = stat;
 		ret_value["version"] = APP_VERSION;
+		ret_value["support"] = supportFeatures;
 		m_server.send(hdl, fs.write(ret_value), msg->get_opcode());
 		return;
 	}
@@ -338,9 +344,7 @@ void Server::onAction(const SAction action, Json::Value &value, websocketpp::con
 				ret_value["code"] = bRet ? 200 : 500;
 				ret_value["action"] = GetActionText(kActionStartPush);
 				m_server.send(hdl, fs.write(ret_value), opcode);
-			}
-			else if (type == "connect")
-			{
+			} else if (type == "connect") {
 				m_cm_ptr->CreateRoom(room_id, room_name, push_url, [this, hdl, opcode](int code) {
 					Json::FastWriter fs;
 					Json::Value ret_value;
@@ -348,9 +352,7 @@ void Server::onAction(const SAction action, Json::Value &value, websocketpp::con
 					ret_value["action"] = GetActionText(kActionStartPush);
 					m_server.send(hdl, fs.write(ret_value), opcode);
 				});
-			}
-			else
-			{
+			} else {
 				params_error = true;
 			}
 		}

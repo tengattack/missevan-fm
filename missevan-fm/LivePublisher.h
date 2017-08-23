@@ -50,7 +50,7 @@ protected:
 	Event m_mixer_event;
 	Lock m_lock;
 	CSliceBuffer m_buf;
-	ulong m_samples;
+	uint32 m_time;
 	bool m_started;
 	bool m_start_send;
 	Dsp::SimpleFilter<Dsp::ChebyshevI::BandStop<3>, 2> m_filter;

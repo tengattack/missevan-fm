@@ -99,39 +99,66 @@ bool CLoopbackAudioCapture::Start()
 		return false;
 	}
 
-	if (mixFormat->wFormatTag != WAVE_FORMAT_PCM)
-	{
-		if (!_Transform.Initialize(mixFormat, &_format))
-		{
-			printf("Unable to initialize audio transform.\n");
-			return false;
-		}
-
-		_Transform.RegisterCallback(TransformProc, this);
-		if (!_Transform.Start())
-		{
-			_Transform.Shutdown();
-			printf("Unable to start audio transform.\n");
-			return false;
-		}
-
-		_EnableTransform = true;
-	}
+	bool initialized = false;
 	memcpy(&_waveFormat, mixFormat, sizeof(_waveFormat));
 
+	if (mixFormat->wFormatTag != WAVE_FORMAT_PCM
+		|| _waveFormat.nSamplesPerSec != _format.sampleRate
+		|| _waveFormat.nChannels != _format.channels
+		|| _waveFormat.wBitsPerSample != _format.bits)
+	{
+		_waveFormat.wFormatTag = WAVE_FORMAT_PCM;
+		_waveFormat.nSamplesPerSec = _format.sampleRate;
+		_waveFormat.nChannels = _format.channels;
+		_waveFormat.wBitsPerSample = _format.bits;
+		_waveFormat.nBlockAlign = (_waveFormat.nChannels * _waveFormat.wBitsPerSample) / 8;
+		_waveFormat.nAvgBytesPerSec = _waveFormat.nSamplesPerSec * _waveFormat.nBlockAlign;
+		_waveFormat.cbSize = 0;
+
+		// try initialize for specify format
+		hr = _AudioClient->Initialize(AUDCLNT_SHAREMODE_SHARED,
+			AUDCLNT_STREAMFLAGS_EVENTCALLBACK | AUDCLNT_STREAMFLAGS_NOPERSIST | AUDCLNT_STREAMFLAGS_LOOPBACK,
+			REFTIMES_PER_SEC, // This parameter is of type REFERENCE_TIME and is expressed in 100-nanosecond units.
+			0, &_waveFormat, NULL);
+
+		if (FAILED(hr)) {
+			if (!_Transform.Initialize(mixFormat, &_format))
+			{
+				printf("Unable to initialize audio transform.\n");
+				return false;
+			}
+
+			_Transform.RegisterCallback(TransformProc, this);
+			if (!_Transform.Start())
+			{
+				_Transform.Shutdown();
+				printf("Unable to start audio transform.\n");
+				return false;
+			}
+
+			_EnableTransform = true;
+		}
+		else
+		{
+			initialized = true;
+		}
+	}
+	
 	//
 	//  Initialize the chat transport - Initialize WASAPI in event driven mode, associate the audio client with
 	//  our samples ready event handle, retrieve a capture/render client for the transport, create the chat thread
 	//  and start the audio engine.
 	//
+	if (!initialized) {
+		// REFTIMES_PER_SEC
+		// AUDCLNT_SESSIONFLAGS_DISPLAY_HIDE | AUDCLNT_STREAMFLAGS_NOPERSIST | 
+		// (uint64)_bufferLength * 10000000 / mixFormat->nAvgBytesPerSec
+		hr = _AudioClient->Initialize(AUDCLNT_SHAREMODE_SHARED,
+			AUDCLNT_STREAMFLAGS_EVENTCALLBACK | AUDCLNT_STREAMFLAGS_NOPERSIST | AUDCLNT_STREAMFLAGS_LOOPBACK,
+			REFTIMES_PER_SEC, // This parameter is of type REFERENCE_TIME and is expressed in 100-nanosecond units.
+			0, mixFormat, NULL);
+	}
 
-	// REFTIMES_PER_SEC
-	// AUDCLNT_SESSIONFLAGS_DISPLAY_HIDE | AUDCLNT_STREAMFLAGS_NOPERSIST | 
-	// (uint64)_bufferLength * 10000000 / mixFormat->nAvgBytesPerSec
-	hr = _AudioClient->Initialize(AUDCLNT_SHAREMODE_SHARED,
-		AUDCLNT_STREAMFLAGS_EVENTCALLBACK | AUDCLNT_STREAMFLAGS_NOPERSIST | AUDCLNT_STREAMFLAGS_LOOPBACK,
-		REFTIMES_PER_SEC, // This parameter is of type REFERENCE_TIME and is expressed in 100-nanosecond units.
-		0, mixFormat, NULL);
 	CoTaskMemFree(mixFormat);
 	mixFormat = NULL;
 
@@ -233,25 +260,22 @@ DWORD CLoopbackAudioCapture::WasapiThread(LPVOID Context)
 			//
 			BYTE *pData;
 			UINT32 framesAvailable;
-			DWORD flags;
+			DWORD flags = 0;
 
-			hr = pCapture->_AudioClient->GetCurrentPadding(&framesAvailable);
+			// hr = pCapture->_AudioClient->GetCurrentPadding(&framesAvailable);
 			hr = pCapture->_CaptureClient->GetBuffer(&pData, &framesAvailable, &flags, NULL, NULL);
+			if (FAILED(hr)) {
+				printf("IAudioCaptureClient GetBuffer Error: 0x%08x\n", hr);
+				goto exit_l;
+			}
 
 			if (flags & AUDCLNT_BUFFERFLAGS_SILENT)
 			{
 				if (pCapture->_callback) {
 					AudioFormat *format = &pCapture->_format;
 					uint32 length = framesAvailable * format->channels * format->bits / 8;
-					pData = (BYTE *)malloc(length);
-
-					// silent data
-					memset(pData, 0, length);
-
-					pCapture->_callback(pData, length, pCapture->_user_data);
-					free(pData);
+					pCapture->_callback(NULL, length, pCapture->_user_data);
 				}
-				break;
 			}
 			else if (pCapture->_EnableTransform)
 			{
@@ -270,6 +294,7 @@ DWORD CLoopbackAudioCapture::WasapiThread(LPVOID Context)
 	}
 
 exit_l:
+	pCapture->_ChatThread = NULL;
 	return 0;
 }
 

@@ -22,7 +22,7 @@ public:
 	void Stop();
 
 	int SendAudioAACHeader(AudioFormat *format);
-	int SendAudioAACData(uint8 *buf, int len, long timeoffset);
+	int SendAudioAACData(uint8 *buf, int len, uint32 timeoffset);
 
 	void Shutdown();
 };

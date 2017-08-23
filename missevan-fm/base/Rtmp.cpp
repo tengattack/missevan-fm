@@ -108,7 +108,7 @@ int CRtmp::SendAudioAACHeader(AudioFormat *format)
 	return RTMP_SendPacket(_rtmp, &packet, TRUE);
 }
 
-int CRtmp::SendAudioAACData(uint8 *buf, int len, long timeoffset)
+int CRtmp::SendAudioAACData(uint8 *buf, int len, uint32 timeoffset)
 {
 	int nRet = -1;
 	buf += 7;
