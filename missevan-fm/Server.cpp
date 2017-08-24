@@ -75,7 +75,7 @@ const char *Server::S_ACTION_TEXT[] = {
 	"check", "login", "logout",
 	"set_volume",
 	"start_pull", "stop_pull",
-	"start_push", "join_room", "stop_push",
+	"start_push", "join_connect", "stop_push",
 };
 
 Server::context_ptr Server::on_tls_init(Server* s, tls_mode mode, websocketpp::connection_hdl hdl)
@@ -255,7 +255,7 @@ void Server::onAction(const SAction action, Json::Value &value, websocketpp::con
 	bool player_op = (action == kActionStartPull || action == kActionStopPull);
 	bool logout_op = (action == kActionLogout);
 	bool stop_push_op = (action == kActionStopPush);
-	bool room_op = action == kActionStartPush || action == kActionJoinRoom || stop_push_op;
+	bool room_op = action == kActionStartPush || action == kActionJoinConnect || stop_push_op;
 	if (room_op && !(stat & kStatUser)) {
 		ret_value["code"] = kSForbidden;
 		ret_value["action"] = GetActionText(action);
@@ -356,7 +356,7 @@ void Server::onAction(const SAction action, Json::Value &value, websocketpp::con
 				params_error = true;
 			}
 		}
-	} else if (action == kActionJoinRoom) {
+	} else if (action == kActionJoinConnect) {
 		const uint32_t room_id = value.get("room_id", 0).asUInt();
 		const std::string& room_name = value.get("room_name", "").asString();
 		if (!room_id || room_name.empty()) {
@@ -370,7 +370,7 @@ void Server::onAction(const SAction action, Json::Value &value, websocketpp::con
 				Json::FastWriter fs;
 				Json::Value ret_value;
 				ret_value["code"] = code;
-				ret_value["action"] = GetActionText(kActionJoinRoom);
+				ret_value["action"] = GetActionText(kActionJoinConnect);
 				m_server.send(hdl, fs.write(ret_value), opcode);
 			});
 		}

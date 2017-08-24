@@ -51,7 +51,7 @@ public:
 		kActionStopPull,
 
 		kActionStartPush,
-		kActionJoinRoom,
+		kActionJoinConnect,
 		kActionStopPush,
 	};
 	enum SEvent {
