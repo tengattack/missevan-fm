@@ -1,4 +1,6 @@
 .vs
+*.aps
+
 Debug
 DebugDll
 Release
