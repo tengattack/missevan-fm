@@ -10,7 +10,7 @@
 #define APP_LOG_FOLDER "MissEvanFM"
 #define APP_CLASSNAME L"MissEvanFM"
 #define APP_NAME L"Ã¨¶úFMÖ±²¥ÖúÊÖ"
-#define APP_VERSION L"1.0.0.12"
+#define APP_VERSION L"1.0.0.15"
 
 #define WM_USER_TRAYICON (WM_USER + 1)
 #define TRAYICON_ID 1

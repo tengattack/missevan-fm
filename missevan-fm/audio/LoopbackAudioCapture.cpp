@@ -221,6 +221,10 @@ bool CLoopbackAudioCapture::Start()
 		printf("Unable to initialize audio client.\n");
 		return false;
 	}
+	
+	// reset events
+	ResetEvent(_ShutdownEvent);
+	ResetEvent(_AudioSamplesReadyEvent);
 
 	if (_EventCallback)
 	{
@@ -327,11 +331,11 @@ DWORD CLoopbackAudioCapture::WasapiThread(LPVOID Context)
 		goto exit_l;
 	}
 
-
 	while (stillPlaying)
 	{
 		// Sleep for half the buffer duration.
 		DWORD waitResult = WaitForSingleObject(_ShutdownEvent, hnsActualDuration / REFTIMES_PER_MILLISEC / 2);
+
 		switch (waitResult) {
 		case WAIT_OBJECT_0:
 			stillPlaying = false;

@@ -93,7 +93,7 @@ int LivePublisher::GetActiveCaptureCount()
 	int active_count = 0;
 	for (auto iter = m_captures.cbegin(); iter != m_captures.cend(); iter++)
 	{
-		if ((*iter)->active) {
+		if ((*iter)->active || (*iter)->slice.GetBufferLen() > 0) {
 			active_count++;
 		}
 	}
@@ -245,16 +245,28 @@ bool LivePublisher::EnableLookbackCapture(bool bEnable)
 
 void LivePublisher::AudioMixer(ulong mixLength)
 {
-	int num = GetActiveCaptureCount();
-	uint8 *data = (uint8 *)malloc(mixLength);
-	uint8 **sources = (uint8 **)malloc(num * sizeof(uint8 *));
+	int num = 0;
 
 	int i, j;
 	LivePublisherCapture *cap_ = NULL;
+	for (i = 0; i < m_captures.size(); i++)
+	{
+		cap_ = m_captures[i];
+		if (cap_->slice.GetBufferLen() >= mixLength) {
+			num++;
+		}
+	}
+
+	if (num <= 0) {
+		return;
+	}
+
+	uint8 *data = (uint8 *)malloc(mixLength);
+	uint8 **sources = (uint8 **)malloc(num * sizeof(uint8 *));
 	for (i = 0, j = 0; i < m_captures.size(); i++)
 	{
 		cap_ = m_captures[i];
-		if (cap_->active) {
+		if (cap_->slice.GetBufferLen() >= mixLength) {
 			sources[j++] = cap_->slice.GetBuffer();
 		}
 	}
@@ -283,10 +295,10 @@ void LivePublisher::AudioMixer(ulong mixLength)
 	free(data);
 
 	// slice buffer
-	for (int i = 0; i < m_captures.size(); i++)
+	for (i = 0; i < m_captures.size(); i++)
 	{
 		cap_ = m_captures[i];
-		if (cap_->active) {
+		if (cap_->slice.GetBufferLen() >= mixLength) {
 			cap_->slice.Slice(mixLength);
 		}
 	}
@@ -346,7 +358,7 @@ void LivePublisher::_CaptureProc(uint8 *data, ulong length, LivePublisherCapture
 		for (int i = 0; i < m_captures.size(); i++)
 		{
 			cap_ = m_captures[i];
-			if (cap_->active) {
+			if (cap_->slice.GetBufferLen()) {
 				if (!gotFirstSize)
 				{
 					// first one
@@ -363,9 +375,7 @@ void LivePublisher::_CaptureProc(uint8 *data, ulong length, LivePublisherCapture
 		if (minBufferSize > 0) {
 			AudioMixer(minBufferSize);
 			// TODO: some thing
-		}
-		else
-		{
+		} else {
 			// NO THING TO DO
 			return;
 		}

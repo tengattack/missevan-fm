@@ -181,14 +181,16 @@ LRESULT CMainTray::OnTrayMenu(UINT wParam, LONG lParam)
 		if (stat & Server::kStatPushLive) {
 			bool enabled = m_server_ptr->m_publisher_ptr->IsLoopbackEnabled();
 			if (!enabled) {
-				MessageBox(m_hWnd, L"高清模式下，本程序将会把系统播放的声音一并直播。", L"提示", MB_OK);
+				MessageBox(m_hWnd, L"高清模式下，本程序将会把系统播放的声音一并直播。", L"提示", MB_ICONINFORMATION | MB_OK);
 			}
-			m_server_ptr->m_publisher_ptr->EnableLookbackCapture(!enabled);
+			if (!m_server_ptr->m_publisher_ptr->EnableLookbackCapture(!enabled)) {
+				MessageBox(m_hWnd, L"无法开启系统背景音录制", L"错误", MB_ICONERROR | MB_OK);
+			}
 		} else if (stat & Server::kStatPushConnect) {
 			if (m_dm->IsAudioHooked()) {
 				m_dm->EndHookAudio();
 			} else {
-				MessageBox(m_hWnd, L"请选择一个程序，本程序将会把其所播放的音乐一并直播，例如网易云音乐。", L"提示", MB_OK);
+				MessageBox(m_hWnd, L"请选择一个程序，本程序将会把其所播放的音乐一并直播，例如网易云音乐。", L"提示", MB_ICONINFORMATION | MB_OK);
 					operation::CFileSelect fsel(m_hWnd, operation::kOpen, L"可执行文件(*.exe)|*.exe||", L"请选择一个程序");
 				if (fsel.Select()) {
 					CW2C w2c(fsel.GetPath().c_str());
