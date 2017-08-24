@@ -89,6 +89,18 @@
 			return static_cast<bool>(::EnableMenuItem(m_hMenu, id, uEnable));
 		}
 
+		bool CMenu::CheckItem(UINT id, bool enable_, bool byposition)
+		{
+			BOOL uEnable = enable_ ? MF_CHECKED : MF_UNCHECKED;
+			if (byposition) {
+				uEnable |= MF_BYPOSITION;
+			}
+			else {
+				uEnable |= MF_BYCOMMAND;
+			}
+			return static_cast<bool>(::CheckMenuItem(m_hMenu, id, uEnable));
+		}
+
 		bool CMenu::SetDefaultItem(UINT item, bool byposition)
 		{
 			return static_cast<bool>(::SetMenuDefaultItem(m_hMenu, item, byposition ? TRUE : FALSE));

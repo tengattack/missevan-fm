@@ -8,9 +8,11 @@
 #include <base/lock.h>
 #include <base/event.h>
 
+#ifdef MIC_DENOISE
 /* DSP */
 #include <DSPFilters/Filter.h>
 #include <DSPFilters/ChebyshevI.h>
+#endif
 
 #include "base/types.h"
 #include "base/SliceBuffer.h"
@@ -53,9 +55,12 @@ protected:
 	uint32 m_time;
 	bool m_started;
 	bool m_start_send;
+#ifdef MIC_DENOISE
 	Dsp::SimpleFilter<Dsp::ChebyshevI::BandStop<3>, 2> m_filter;
+#endif
 
 	bool m_enable_loopback;
+	bool m_enable_copy_mic_left;
 	LivePublisherCapture* NewCapture(LivePublisherCaptureType type);
 	LivePublisherCapture* GetCapture(LivePublisherCaptureType type);
 	int GetActiveCaptureCount();
@@ -80,12 +85,14 @@ public:
 
 	bool IsStreaming();
 	bool IsLoopbackEnabled();
+	bool IsCopyMicLeftChannel();
 
 	bool Start(const std::string& push_url);
 	void Stop();
 	void Shutdown();
 
 	bool EnableLookbackCapture(bool bEnable);
+	bool EnableCopyMicLeftChannel(bool bEnable);
 };
 
 #endif

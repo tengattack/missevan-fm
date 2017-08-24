@@ -25,6 +25,7 @@ enum TrayPushMenuType {
 	kTMTState = 301,
 	kTMTAudioMic,
 	kTMTAudioHook,
+	kTMTAudioCopyMicLeftChannel,
 };
 
 
@@ -59,10 +60,12 @@ BOOL CMainTray::Create(HWND hWnd, UINT uCallbackMessage, LPCTSTR szTip, HICON ic
 		m_pushMenu->Append(kTMTState, L"¿ÕÏÐÖÐ");
 		m_pushMenu->Append(kTMTAudioMic, L"´ò¿ªÂó¿Ë·ç");
 		m_pushMenu->Append(kTMTAudioHook, L"ÉèÖÃ±³¾°ÀÖ");
+		m_pushMenu->Append(kTMTAudioCopyMicLeftChannel, L"ÐÞ¸´Âó¿Ë·çÓÒÉùµÀ");
 
 		m_pushMenu->EnableItem(kTMTState, false, false);
 		m_pushMenu->EnableItem(kTMTAudioMic, false, false);
 		m_pushMenu->EnableItem(kTMTAudioHook, false, false);
+		m_pushMenu->EnableItem(kTMTAudioCopyMicLeftChannel, false, false);
 
 		m_mainMenu->CreatePopup();
 
@@ -114,7 +117,10 @@ void CMainTray::UpdateMenu()
 				} else {
 					m_pushMenu->Modify(kTMTAudioHook, L"ÉèÖÃ±³¾°ÀÖ");
 				}
+				enabled = m_server_ptr->m_publisher_ptr->IsCopyMicLeftChannel();
+				m_pushMenu->CheckItem(kTMTAudioCopyMicLeftChannel, enabled, false);
 				m_pushMenu->EnableItem(kTMTAudioMic, false, false);
+				m_pushMenu->EnableItem(kTMTAudioCopyMicLeftChannel, true, false);
 			} else {
 				if (m_dm->IsMicOpened()) {
 					m_pushMenu->Modify(kTMTAudioMic, L"¹Ø±ÕÂó¿Ë·ç");
@@ -127,7 +133,9 @@ void CMainTray::UpdateMenu()
 				} else {
 					m_pushMenu->Modify(kTMTAudioHook, L"ÉèÖÃ±³¾°ÀÖ");
 				}
+				m_pushMenu->CheckItem(kTMTAudioCopyMicLeftChannel, false, false);
 				m_pushMenu->EnableItem(kTMTAudioMic, true, false);
+				m_pushMenu->EnableItem(kTMTAudioCopyMicLeftChannel, false, false);
 			}
 			m_pushMenu->EnableItem(kTMTAudioHook, true, false);
 		} else {
@@ -198,6 +206,11 @@ LRESULT CMainTray::OnTrayMenu(UINT wParam, LONG lParam)
 				}
 			}
 		}
+	}
+	break;
+	case kTMTAudioCopyMicLeftChannel: {
+		bool enabled = m_server_ptr->m_publisher_ptr->IsCopyMicLeftChannel();
+		m_server_ptr->m_publisher_ptr->EnableCopyMicLeftChannel(!enabled);
 	}
 	break;
 	case kTMTUpdate: {

@@ -23,6 +23,7 @@
 			bool Remove();
 
 			bool EnableItem(UINT id, bool enable_ = true, bool byposition = true);
+			bool CheckItem(UINT id, bool enable_ = true, bool byposition = true);
 			bool SetDefaultItem(UINT item, bool byposition = true);
 
 			// by command

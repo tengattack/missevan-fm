@@ -19,6 +19,7 @@ LivePublisher::LivePublisher()
 	, m_started(false)
 	, m_start_send(false)
 	, m_enable_loopback(false)
+	, m_enable_copy_mic_left(false)
 	, m_mixer_thread(NULL)
 	, m_mixer_threadid(NULL)
 {
@@ -47,6 +48,11 @@ bool LivePublisher::IsStreaming()
 bool LivePublisher::IsLoopbackEnabled()
 {
 	return m_enable_loopback;
+}
+
+bool LivePublisher::IsCopyMicLeftChannel()
+{
+	return m_enable_copy_mic_left;
 }
 
 LivePublisherCapture* LivePublisher::NewCapture(LivePublisherCaptureType type)
@@ -142,11 +148,13 @@ bool LivePublisher::Start(const std::string& push_url)
 		return false;
 	}
 
+#ifdef MIC_DENOISE
 	m_filter.setup(3,                   // order
 				   m_format.sampleRate, // sample rate
 				   4000,                // center frequency
 				   880,                 // band width
 				   1);                  // ripple dB
+#endif
 
 	if (!cap->capture->Start()) {
 		printf("Unable to start mic capture.\n");
@@ -183,6 +191,7 @@ void LivePublisher::Stop()
 	m_started = false;
 	m_start_send = false;
 	m_enable_loopback = false;
+	m_enable_copy_mic_left = false;
 	m_buf.ClearBuffer();
 }
 
@@ -241,6 +250,12 @@ bool LivePublisher::EnableLookbackCapture(bool bEnable)
 		m_enable_loopback = bEnable;
 	}
 	return bRet;
+}
+
+bool LivePublisher::EnableCopyMicLeftChannel(bool bEnable)
+{
+	m_enable_copy_mic_left = bEnable;
+	return bEnable;
 }
 
 void LivePublisher::AudioMixer(ulong mixLength)
@@ -306,7 +321,17 @@ void LivePublisher::AudioMixer(ulong mixLength)
 
 void LivePublisher::_CaptureProc(uint8 *data, ulong length, LivePublisherCapture *cap)
 {
-	/*if (cap->type == kMicCapture) {
+	if (cap->type == kMicCapture) {
+		if (m_enable_copy_mic_left && m_format.channels > 0) {
+			int sampleBytes = m_format.bits / 8;
+			int numSamples = length / sampleBytes / m_format.channels;
+			for (int i = 1; i < m_format.channels; i++) {
+				for (int j = 0; j < numSamples; j++) {
+					memcpy(data + (j * m_format.channels + i) * sampleBytes, data + j * m_format.channels * sampleBytes, sampleBytes);
+				}
+			}
+		}
+#ifdef MIC_DENOISE
 		// apply filter
 		int numSamples = length * 8 / m_format.bits / m_format.channels;
 		// assume 16bits
@@ -326,7 +351,8 @@ void LivePublisher::_CaptureProc(uint8 *data, ulong length, LivePublisherCapture
 			free(sources[i]);
 		}
 		free(sources);
-	}*/
+#endif
+	}
 	ulong t = RTMP_GetTime() - m_start_time;
 
 	AutoLock _(m_lock);
