@@ -367,6 +367,10 @@ void LivePublisher::_CaptureProc(uint8 *data, ulong length, LivePublisherCapture
 	int active_count = GetActiveCaptureCount();
 	if (active_count == 1)
 	{
+		if (cap->slice.GetBufferLen() > 0) {
+			m_buf.Write(cap->slice.GetBuffer(), cap->slice.GetBufferLen());
+			cap->slice.ClearBuffer();
+		}
 		m_buf.Write(data, length);
 	}
 	else
