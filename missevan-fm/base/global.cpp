@@ -4,6 +4,7 @@
 #include <Windows.h>
 
 #include "global.h"
+#include "config.h"
 #include "../resource.h"
 
 #include "../ui/MainWindow.h"
@@ -59,6 +60,9 @@ namespace global {
 
 		InitPath();
 		hIcon = LoadIcon(_hInstance, MAKEINTRESOURCE(IDI_MAIN));
+
+		// read config file
+		config::read();
 
 		return true;
 	}
