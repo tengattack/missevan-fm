@@ -105,6 +105,9 @@
     <ClInclude Include="audio\AudioTransform.h">
       <Filter>audio</Filter>
     </ClInclude>
+    <ClInclude Include="base\config.h">
+      <Filter>base</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">
@@ -178,6 +181,9 @@
     </ClCompile>
     <ClCompile Include="audio\AudioTransform.cpp">
       <Filter>audio</Filter>
+    </ClCompile>
+    <ClCompile Include="base\config.cpp">
+      <Filter>base</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

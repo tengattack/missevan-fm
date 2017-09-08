@@ -1,6 +1,7 @@
 #include "StdAfx.h"
 #include "MicAudioCapture.h"
 
+#include <base/logging.h>
 
 CMicAudioCapture::CMicAudioCapture(uint32 bufferLength)
 	: CAudioCapture(bufferLength)
@@ -46,7 +47,7 @@ bool CMicAudioCapture::Start()
 		CALLBACK_FUNCTION | WAVE_MAPPED_DEFAULT_COMMUNICATION_DEVICE);
 	if (mmr != MMSYSERR_NOERROR)
 	{
-		printf("Failed to open wave in\n");
+		PLOG(ERROR) << "Failed to open wave in";
 		return false;
 	}
 
@@ -54,7 +55,7 @@ bool CMicAudioCapture::Start()
 	_waveBuffer1 = new WORD[_bufferLength];
 	if (_waveBuffer1 == NULL)
 	{
-		printf("Failed to allocate buffer for header 1\n");
+		PLOG(ERROR) << "Failed to allocate buffer for header 1";
 		return false;
 	}
 	_waveHeader1.dwBufferLength = _bufferLength;
@@ -64,14 +65,14 @@ bool CMicAudioCapture::Start()
 	mmr = waveInPrepareHeader(_waveHandle, &_waveHeader1, sizeof(_waveHeader1));
 	if (mmr != MMSYSERR_NOERROR)
 	{
-		printf("Failed to prepare header 1\n");
+		PLOG(ERROR) << "Failed to prepare header 1";
 		return false;
 	}
 
 	mmr = waveInAddBuffer(_waveHandle, &_waveHeader1, sizeof(_waveHeader1));
 	if (mmr != MMSYSERR_NOERROR)
 	{
-		printf("Failed to add buffer 1\n");
+		PLOG(ERROR) << "Failed to add buffer 1";
 		return false;
 	}
 
@@ -79,7 +80,7 @@ bool CMicAudioCapture::Start()
 	_waveBuffer2 = new WORD[_bufferLength];
 	if (_waveBuffer2 == NULL)
 	{
-		printf("Failed to allocate buffer for header 2\n");
+		PLOG(ERROR) << "Failed to allocate buffer for header 2";
 		return false;
 	}
 	_waveHeader2.dwBufferLength = _bufferLength;
@@ -88,14 +89,14 @@ bool CMicAudioCapture::Start()
 	mmr = waveInPrepareHeader(_waveHandle, &_waveHeader2, sizeof(_waveHeader2));
 	if (mmr != MMSYSERR_NOERROR)
 	{
-		printf("Failed to prepare header 2\n");
+		PLOG(ERROR) << "Failed to prepare header 2";
 		return false;
 	}
 
 	mmr = waveInAddBuffer(_waveHandle, &_waveHeader2, sizeof(_waveHeader2));
 	if (mmr != MMSYSERR_NOERROR)
 	{
-		printf("Failed to add buffer 2\n");
+		PLOG(ERROR) << "Failed to add buffer 2";
 		return false;
 	}
 
@@ -103,7 +104,7 @@ bool CMicAudioCapture::Start()
 	mmr = waveInStart(_waveHandle);
 	if (mmr != MMSYSERR_NOERROR)
 	{
-		printf("Failed to start\n");
+		PLOG(ERROR) << "Failed to start";
 		return false;
 	}
 	return true;
@@ -117,32 +118,32 @@ void CMicAudioCapture::Stop()
 		MMRESULT mmr = waveInStop(_waveHandle);
 		if (mmr != MMSYSERR_NOERROR)
 		{
-			printf("Failed to stop\n");
+			PLOG(ERROR) << "Failed to stop";
 		}
 
 		mmr = waveInReset(_waveHandle);
 		if (mmr != MMSYSERR_NOERROR)
 		{
-			printf("Failed to reset\n");
+			PLOG(ERROR) << "Failed to reset";
 		}
 		mmr = waveInUnprepareHeader(_waveHandle, &_waveHeader1, sizeof(_waveHeader1));
 		if (mmr != MMSYSERR_NOERROR)
 		{
-			printf("Failed to unprepare wave header 1\n");
+			PLOG(ERROR) << "Failed to unprepare wave header 1";
 		}
 		delete[] _waveBuffer1;
 
 		mmr = waveInUnprepareHeader(_waveHandle, &_waveHeader2, sizeof(_waveHeader2));
 		if (mmr != MMSYSERR_NOERROR)
 		{
-			printf("Failed to unprepare wave header 2\n");
+			PLOG(ERROR) << "Failed to unprepare wave header 2";
 		}
 		delete[] _waveBuffer2;
 
 		mmr = waveInClose(_waveHandle);
 		if (mmr != MMSYSERR_NOERROR)
 		{
-			printf("Failed to close wave handle\n");
+			PLOG(ERROR) << "Failed to close wave handle";
 		}
 		_waveHandle = NULL;
 	}
@@ -177,7 +178,7 @@ void CMicAudioCapture::waveInProc(HWAVEIN hwi, UINT uMsg, DWORD dwInstance, DWOR
 			mmr = waveInAddBuffer(hwi, waveHeader, sizeof(WAVEHDR));
 			if (mmr != MMSYSERR_NOERROR)
 			{
-				printf("Failed to add buffer\n");
+				PLOG(ERROR) << "Failed to add buffer";
 			}
 		}
 		break;

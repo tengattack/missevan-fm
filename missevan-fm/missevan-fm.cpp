@@ -6,6 +6,8 @@
 #include "missevan-fm.h"
 
 #include <base/defer_ptr.h>
+#include <base/at_exit.h>
+#include <base/logging.h>
 
 #include "base/common.h"
 #include "base/global.h"
@@ -79,6 +81,7 @@ int WINAPI MissEvanFMMain(HINSTANCE hInstance)
 #elif defined(_DEBUG)
 int main()
 {
+	base::AtExitManager exit_manager;
 	HINSTANCE hInstance = GetModuleHandle(NULL);
 #else
 int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
@@ -94,49 +97,52 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 	DEFER(global::Uninit());
 
 	if (!global::NetInit()) {
-		printf("network init failed!\n");
+		LOG(ERROR) << "network init failed!";
 	}
 	DEFER(global::NetUninit());
 
 	CMainWindow::Init(APP_CLASSNAME);
 
-	DeviceManager::Init();
-	DEFER(DeviceManager::Cleanup());
+	// DeviceManager::Init();
+	// DEFER(DeviceManager::Cleanup());
 
 	bool ret = UserAccount::Init();
 	bool ret_vchat = false;
-	printf("nim_client_init: %d\n", ret ? 1 : 0);
+	LOG(INFO) << "nim_client_init: " << ret;
 
 	if (ret) {
 		DEFER(UserAccount::Cleanup());
 
 		ret_vchat = ChatManager::Init();
-		printf("nim_vchat_init: %d\n", ret ? 1 : 0);
+		LOG(INFO) << "nim_vchat_init: " << ret;
 
 		if (ret_vchat) {
 			DEFER(ChatManager::Cleanup());
-			printf("init done.\n");
+			LOG(INFO) << "init done.";
 		} else {
-			printf("nim_vchat_init failed!\n");
+			LOG(ERROR) << "nim_vchat_init failed!";
 			return 1;
 		}
 	} else {
-		printf("nim_client_init failed!\n");
+		LOG(ERROR) << "nim_client_init failed!";
 		return 1;
 	}
 
 	Server server;
 	HANDLE hThread = CreateThread(NULL, NULL, UIThreadProc, &server, NULL, NULL);
-	
+
+	if (!hThread) {
+		LOG(ERROR) << "create ui thread failed!";
+	}
 	if (!server.start()) {
-		printf("start server failed\n");
+		LOG(ERROR) << "start server failed!";
 	}
 
 	WaitForSingleObject(hThread, INFINITE);
 	CloseHandle(hThread);
 	
 	//scanf("%*c");
-	printf("cleaning up...\n");
+	LOG(INFO) << "cleaning up...";
 	UserAccount::GetInstance()->Logout();
 	
     return 0;

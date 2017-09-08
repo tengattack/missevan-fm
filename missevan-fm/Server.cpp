@@ -2,11 +2,12 @@
 #include "Server.h"
 
 #include <string>
-#include <curl/curl.h>
-#include <common/Buffer.h>
-#include <common/strconv.h>
+#include <base/logging.h>
 #include <base/file/file.h>
 #include <base/file/filedata.h>
+#include <common/Buffer.h>
+#include <common/strconv.h>
+#include <curl/curl.h>
 
 #include "base/common.h"
 #include "base/global.h"
@@ -195,13 +196,14 @@ void Server::onWebSocketMessage(Server* s, websocketpp::connection_hdl hdl, Serv
 					ret_value["desp"] = "action not found";
 					s->m_server.send(hdl, fs.write(ret_value), msg->get_opcode());
 				} else {
+					LOG(INFO) << "Server action: " << action;
 					s->onAction(_action, value, hdl, msg);
 				}
 			}
 		}
 	} catch (const websocketpp::lib::error_code& e) {
-		std::cout << "Echo failed because: " << e
-			<< "(" << e.message() << ")" << std::endl;
+		LOG(ERROR) << "Echo failed because: " << e
+			<< " (" << e.message() << ")";
 	}
 }
 
@@ -325,10 +327,9 @@ void Server::onAction(const SAction action, Json::Value &value, websocketpp::con
 		}
 	} else if (action == kActionStartPush) {
 		const uint32_t room_id = value.get("room_id", 0).asUInt();
-		const std::string& room_name = value.get("room_name", "").asString();
 		const std::string& push_url = value.get("push_url", "").asString();
 		const std::string& type = value.get("type", "").asString();
-		if (!room_id || room_name.empty() || push_url.empty()) {
+		if (!room_id || push_url.empty()) {
 			params_error = true;
 		} else {
 			if (stat & kStatPlayer) {
@@ -345,13 +346,18 @@ void Server::onAction(const SAction action, Json::Value &value, websocketpp::con
 				ret_value["action"] = GetActionText(kActionStartPush);
 				m_server.send(hdl, fs.write(ret_value), opcode);
 			} else if (type == "connect") {
-				m_cm_ptr->CreateRoom(room_id, room_name, push_url, [this, hdl, opcode](int code) {
-					Json::FastWriter fs;
-					Json::Value ret_value;
-					ret_value["code"] = code;
-					ret_value["action"] = GetActionText(kActionStartPush);
-					m_server.send(hdl, fs.write(ret_value), opcode);
-				});
+				const std::string& room_name = value.get("room_name", "").asString();
+				if (room_name.empty()) {
+					params_error = true;
+				} else {
+					m_cm_ptr->CreateRoom(room_id, room_name, push_url, [this, hdl, opcode](int code) {
+						Json::FastWriter fs;
+						Json::Value ret_value;
+						ret_value["code"] = code;
+						ret_value["action"] = GetActionText(kActionStartPush);
+						m_server.send(hdl, fs.write(ret_value), opcode);
+					});
+				}
 			} else {
 				params_error = true;
 			}

@@ -6,6 +6,12 @@
 
 #include <string>
 #include <list>
+#include <base/basictypes.h>
+
+namespace base {
+  template <typename T>
+  struct DefaultSingletonTraits;
+}
 
 class DeviceManager
 {
@@ -27,8 +33,6 @@ public:
 	};
 
 	static DeviceManager *GetInstance();
-	static void Init();
-	static void Cleanup();
 
 	void GetDeviceByJson(bool ret, nim::NIMDeviceType type, const char* json);
 	std::list<MEDIA_DEVICE_DRIVE_INFO> GetDeviceInfo(nim::NIMDeviceType type);
@@ -72,6 +76,10 @@ protected:
 	static void DeviceStatusCb(nim::NIMDeviceType type, UINT status, const char* path, const char *json, const void *user_data);
 
 	void OnDeviceStatus(nim::NIMDeviceType type, UINT status, std::string path);
+
+private:
+	friend struct base::DefaultSingletonTraits<DeviceManager>;
+	DISALLOW_COPY_AND_ASSIGN(DeviceManager);
 };
 
 #endif

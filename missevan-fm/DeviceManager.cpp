@@ -1,32 +1,15 @@
 #include "stdafx.h"
 #include "DeviceManager.h"
 
+#include <base/logging.h>
+#include <base/memory/singleton.h>
 #include "audio/AudioTransform.h"
 
 DeviceManager *DeviceManager::deviceManager = NULL;
 
 DeviceManager *DeviceManager::GetInstance()
 {
-	return deviceManager;
-}
-
-void DeviceManager::Init()
-{
-	if (deviceManager == NULL)
-	{
-		deviceManager = new DeviceManager();
-	}
-	CAudioTransform::Init();
-}
-
-void DeviceManager::Cleanup()
-{
-	CAudioTransform::Cleanup();
-	if (deviceManager != NULL)
-	{
-		delete deviceManager;
-		deviceManager = NULL;
-	}
+	return base::Singleton<DeviceManager>::get();
 }
 
 DeviceManager::DeviceManager()
@@ -37,10 +20,12 @@ DeviceManager::DeviceManager()
 	{
 		device_session_type_[i] = kDeviceSessionTypeNone;
 	}
+	CAudioTransform::Init();
 }
 
 DeviceManager::~DeviceManager()
 {
+	CAudioTransform::Cleanup();
 }
 
 void DeviceManager::GetDeviceByJson(bool ret, nim::NIMDeviceType type, const char* json)
@@ -83,17 +68,17 @@ void DeviceManager::StartDeviceCb(nim::NIMDeviceType type, bool ret, const char 
 	switch (type)
 	{
 	case nim::kNIMDeviceTypeVideo:
-		printf("OnStartDeviceCb nim::kNIMDeviceTypeVideo\n");
+		LOG(INFO) << "OnStartDeviceCb nim::kNIMDeviceTypeVideo " << ret;
 		break;
 	case nim::kNIMDeviceTypeAudioIn:
-		printf("OnStartDeviceCb nim::kNIMDeviceTypeAudioIn\n");
+		LOG(INFO) << "OnStartDeviceCb nim::kNIMDeviceTypeAudioIn " << ret;
 		if (!ret) {
 			// TODO: show error
 			DeviceManager::GetInstance()->CloseMic();
 		}
 		break;
 	case nim::kNIMDeviceTypeAudioHook:
-		printf("OnStartDeviceCb nim::kNIMDeviceTypeAudioHook\n");
+		LOG(INFO) << "OnStartDeviceCb nim::kNIMDeviceTypeAudioHook " << ret;
 		if (!ret) {
 			// TODO: show error
 			DeviceManager::GetInstance()->m_hook_audio = false;

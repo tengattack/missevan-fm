@@ -1,6 +1,8 @@
 #include "stdafx.h"
 #include "ChatManager.h"
 
+#include <base/string/stringprintf.h>
+#include <base/logging.h>
 #include "DeviceManager.h"
 
 ChatManager *ChatManager::chatManager = NULL;
@@ -75,7 +77,9 @@ void ChatManager::VChatCb(nim::NIMVideoChatSessionType type, __int64 channel_id,
 	case nim::kNIMVideoChatSessionTypeInfoNotify:
 	{
 #ifdef _DEBUG
-		printf("[statistics]: channel_id: %I64u, code: %d, %s\n", channel_id, code, json);
+		std::string statistics_info;
+		base::SStringPrintf(&statistics_info, "[statistics]: channel_id: %I64u, code: %d, %s\n", channel_id, code, json);
+		VLOG(2) << statistics_info;
 #endif
 		break;
 	}
@@ -86,7 +90,7 @@ void ChatManager::onJoinRoomCb(ChatManager *cm, int code, __int64 channel_id, co
 {
 	//QLOG_ERR(L"JoinRoomCallback code:{0}") << code;
 	//StartLiveStreamRet(code == nim::kNIMVChatConnectSuccess);
-	printf("join room code: %d\n", code);
+	VLOG(1) << "join room code: " << code;
 
 	switch (cm->m_stat) {
 	case kChatOwnerConnecting:
@@ -107,9 +111,9 @@ void ChatManager::onJoinRoomCb(ChatManager *cm, int code, __int64 channel_id, co
 			cm->m_stat = kChatUser;
 			break;
 		default:
-			assert("Unexpected chat stat");
+			DLOG_ASSERT("Unexpected chat stat");
 		}
-		printf("channel_id: %I64u\n", channel_id);
+		VLOG(1) << "channel_id: " << channel_id;
 	} else {
 		dm->EndAudioDevice();
 		cm->m_stat = kChatNone;
@@ -118,7 +122,7 @@ void ChatManager::onJoinRoomCb(ChatManager *cm, int code, __int64 channel_id, co
 
 void ChatManager::onCreateRoomCb(ChatManager *cm, int code, __int64 channel_id, const std::string& json_extension)
 {
-	printf("create room code: %d\n", code);
+	VLOG(1) << "create room code: " << code;
 
 	if (code != nim::kNIMVChatConnectSuccess) {
 		cm->CallCallback(kChatCreateRoomCb, code);

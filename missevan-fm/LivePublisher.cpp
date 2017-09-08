@@ -1,6 +1,7 @@
 #include "StdAfx.h"
 #include "LivePublisher.h"
 
+#include <base/logging.h>
 #include "audio/AACEncoder.h"
 #include "audio/MicAudioCapture.h"
 #include "audio/LoopbackAudioCapture.h"
@@ -108,10 +109,12 @@ int LivePublisher::GetActiveCaptureCount()
 
 bool LivePublisher::Start(const std::string& push_url)
 {
+	LOG(INFO) << "Live Publisher starting...";
+
 	if (!m_encoder) {
 		m_encoder = new CAACEncoder();
 		if (!m_encoder->Initialize(&m_format, 192000)) {
-			printf("Unable to initialize aac encoder.\n");
+			LOG(ERROR) << "Unable to initialize aac encoder.";
 			return false;
 		}
 		m_encoder->RegisterCallback(EncoderProc, this);
@@ -135,7 +138,7 @@ bool LivePublisher::Start(const std::string& push_url)
 	m_mixer_thread = CreateThread(NULL, 0, MixerProc, this, 0, &m_mixer_threadid);
 	if (m_mixer_thread == NULL)
 	{
-		printf("Unable to create transport thread.\n");
+		LOG(ERROR) << "Unable to create transport thread.";
 		return false;
 	}
 	m_mixer_event.Wait();
@@ -144,7 +147,7 @@ bool LivePublisher::Start(const std::string& push_url)
 	m_mixer_event.Wait();
 
 	if (!m_started) {
-		printf("Unable to start rtmp.\n");
+		LOG(ERROR) << "Unable to start rtmp.";
 		return false;
 	}
 
@@ -157,7 +160,7 @@ bool LivePublisher::Start(const std::string& push_url)
 #endif
 
 	if (!cap->capture->Start()) {
-		printf("Unable to start mic capture.\n");
+		LOG(ERROR) << "Unable to start mic capture.";
 		Stop();
 		return false;
 	}
@@ -167,6 +170,13 @@ bool LivePublisher::Start(const std::string& push_url)
 
 void LivePublisher::Stop()
 {
+	LOG(INFO) << "Live Publisher stopping...";
+
+	for (int i = 0; i < m_captures.size(); i++)
+	{
+		m_captures[i]->capture->Stop();
+		m_captures[i]->active = false;
+	}
 	if (m_mixer_thread)
 	{
 		AutoLock _(m_lock);
@@ -176,11 +186,6 @@ void LivePublisher::Stop()
 		CloseHandle(m_mixer_thread);
 		m_mixer_thread = NULL;
 		m_mixer_threadid = 0;
-	}
-	for (int i = 0; i < m_captures.size(); i++)
-	{
-		m_captures[i]->capture->Stop();
-		m_captures[i]->active = false;
 	}
 	if (m_rtmp_ptr) {
 		m_rtmp_ptr->Stop();
@@ -254,6 +259,7 @@ bool LivePublisher::EnableLookbackCapture(bool bEnable)
 
 bool LivePublisher::EnableCopyMicLeftChannel(bool bEnable)
 {
+	LOG(INFO) << "Live Publisher enable copy mic left channel: " << bEnable;
 	m_enable_copy_mic_left = bEnable;
 	return bEnable;
 }
@@ -489,6 +495,8 @@ DWORD LivePublisher::MixerProc(LPVOID context)
 				if (publisher->m_rtmp_ptr->SendAudioAACHeader(&publisher->m_format)) {
 					publisher->m_started = true;
 					publisher->m_start_time = RTMP_GetTime();
+				} else {
+					LOG(ERROR) << "Send Audio AAC Header failed";
 				}
 			}
 			publisher->m_mixer_event.Set();
@@ -504,6 +512,14 @@ DWORD LivePublisher::MixerProc(LPVOID context)
 			isStreaming = false;
 			break;
 		}
+	}
+
+	// free captured data if exists
+	while (PeekMessage(&msg, NULL, LPM_DATA, LPM_DATA, PM_REMOVE))
+	{
+		AACData *d = (AACData *)msg.lParam;
+		free(d->data);
+		free(d);
 	}
 
 	return 0;

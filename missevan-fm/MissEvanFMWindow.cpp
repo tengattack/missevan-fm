@@ -252,22 +252,25 @@ DWORD WINAPI CMissEvanFMWindow::InitUpdateProc(LPVOID lParam)
 
 	if (!json.empty()) {
 		Value* v = base::JSONReader::Read(json.c_str(), true);
-		if (v && v->GetType() == Value::TYPE_DICTIONARY)
+		if (v)
 		{
-			DictionaryValue* dv = (DictionaryValue *)v;
-			std::string state;
-			dv->GetString("state", &state);
-			if (state == "success") {
-				std::string download_url;
-				dv->GetDictionary("info", &dv);
-				if (dv) {
-					dv->GetString("download", &download_url);
-					if (!download_url.empty()) {
-						get_download_url = true;
-						json = DownloadJsonStr(download_url.c_str());
+			if (v->GetType() == Value::TYPE_DICTIONARY) {
+				DictionaryValue* dv = (DictionaryValue *)v;
+				std::string state;
+				dv->GetString("state", &state);
+				if (state == "success") {
+					std::string download_url;
+					dv->GetDictionary("info", &dv);
+					if (dv) {
+						dv->GetString("download", &download_url);
+						if (!download_url.empty()) {
+							get_download_url = true;
+							json = DownloadJsonStr(download_url.c_str());
+						}
 					}
 				}
 			}
+			delete v;
 		}
 	}
 

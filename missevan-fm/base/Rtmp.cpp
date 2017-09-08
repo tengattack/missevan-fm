@@ -1,7 +1,9 @@
 #include "StdAfx.h"
 #include "Rtmp.h"
 
+#include <base/logging.h>
 #include <base/defer_ptr.h>
+#include "config.h"
 
 #define RTMP_HEAD_SIZE   (sizeof(RTMPPacket) + RTMP_MAX_HEADER_SIZE)
 
@@ -21,17 +23,25 @@ CRtmp::~CRtmp()
 bool CRtmp::Start(const char *push_url)
 {
 	/* set log level */
-	// RTMP_LogLevel loglvl = RTMP_LOGDEBUG;
-	// RTMP_LogSetLevel(loglvl);
+#ifdef _DEBUG
+	RTMP_LogLevel loglvl = RTMP_LOGDEBUG;
+	RTMP_LogSetLevel(loglvl);
+#endif
 
 	_rtmp = RTMP_Alloc();
 	RTMP_Init(_rtmp);
 	// set connection timeout, default 30s
 	_rtmp->Link.timeout = 10;
 
-	if (!RTMP_SetupURL(_rtmp, (char *)push_url))
+	std::string push_url_str(push_url);
+	if (config::proxy_url.length()) {
+		push_url_str += " socks=";
+		push_url_str += config::proxy_url;
+	}
+
+	if (!RTMP_SetupURL(_rtmp, (char *)push_url_str.c_str()))
 	{
-		RTMP_Log(RTMP_LOGERROR, "SetupURL Err\n");
+		LOG(ERROR) << "RTMP SetupURL Error";
 		RTMP_Free(_rtmp);
 		_rtmp = NULL;
 		return false;
@@ -41,14 +51,14 @@ bool CRtmp::Start(const char *push_url)
 	RTMP_EnableWrite(_rtmp);
 
 	if (!RTMP_Connect(_rtmp, NULL)) {
-		RTMP_Log(RTMP_LOGERROR, "Connect Err\n");
+		LOG(ERROR) << "RTMP Connect Error";
 		RTMP_Free(_rtmp);
 		_rtmp = NULL;
 		return false;
 	}
 
 	if (!RTMP_ConnectStream(_rtmp, 0)) {
-		RTMP_Log(RTMP_LOGERROR, "ConnectStream Err\n");
+		LOG(ERROR) << "RTMP ConnectStream Error";
 		RTMP_Close(_rtmp);
 		RTMP_Free(_rtmp);
 		_rtmp = NULL;
@@ -129,7 +139,7 @@ int CRtmp::SendAudioAACData(uint8 *buf, int len, uint32 timeoffset)
 		body[1] = 0x01;
 		memcpy(&body[2], buf, len);
 
-		packet->m_headerType = RTMP_PACKET_SIZE_MEDIUM;
+		packet->m_headerType = RTMP_PACKET_SIZE_LARGE;
 		packet->m_packetType = RTMP_PACKET_TYPE_AUDIO;
 		packet->m_nBodySize = len + 2;
 		packet->m_nChannel = STREAM_CHANNEL_VIDEO;

@@ -1,6 +1,7 @@
 #include "stdafx.h"
 #include "UserAccount.h"
 
+#include <base/logging.h>
 #include <common/strconv.h>
 #include "base/common.h"
 
@@ -50,21 +51,21 @@ UserAccount::~UserAccount()
 void UserAccount::OnLogoutCallback(UserAccount *userAccount, nim::NIMResCode res_code)
 {
 	userAccount->m_logged = kUserNone;
+	LOG(INFO) << "logout done: " << (int)res_code;
 }
 
 void UserAccount::OnLoginCallback(UserAccount *userAccount, const nim::LoginRes& login_res)
 {
 	if (login_res.res_code_ == nim::kNIMResSuccess) {
 		if (login_res.login_step_ == nim::kNIMLoginStepLogin) {
-			printf("login success\n");
-			//scanf("%*c");
+			LOG(INFO) << "login success! user(" << userAccount->m_userid << "): " << userAccount->GetUsername();
 			userAccount->m_logged = kUserLogged;
 			userAccount->CallCallback(kUserLoginCb, login_res.res_code_);
 		} else {
 			userAccount->m_logged = kUserLogging;
 		}
 	} else {
-		printf("login failed: %d\n", (int)login_res.res_code_);
+		LOG(INFO) << "login failed: " << (int)login_res.res_code_;
 		userAccount->m_logged = kUserNone;
 		userAccount->CallCallback(kUserLoginCb, login_res.res_code_);
 	}

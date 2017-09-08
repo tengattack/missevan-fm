@@ -1,6 +1,7 @@
 #include "StdAfx.h"
 #include "AudioTransform.h"
 
+#include <base/logging.h>
 #include <common/Buffer.h>
 #include <mfapi.h>
 #include <mftransform.h>
@@ -23,7 +24,9 @@ bool CAudioTransform::Init()
 {
 	HFG(MFStartup(MF_VERSION, MFSTARTUP_NOSOCKET));
 	return true;
+
 exit_l:
+	PLOG(ERROR) << "Audio transformer startup failed";
 	return false;
 }
 
@@ -74,6 +77,7 @@ bool CAudioTransform::Initialize(WAVEFORMATEX *from, AudioFormat *to)
 
 exit_l:
 	SafeRelease(&_pTransform);
+	PLOG(ERROR) << "Audio transformer initialize failed";
 	return false;
 }
 
@@ -86,6 +90,7 @@ bool CAudioTransform::Start()
 	return true;
 
 exit_l:
+	PLOG(ERROR) << "Audio transformer start failed";
 	return false;
 }
 
@@ -94,7 +99,9 @@ void CAudioTransform::Stop()
 	HFG(_pTransform->ProcessMessage(MFT_MESSAGE_NOTIFY_END_OF_STREAM, NULL));
 	HFG(_pTransform->ProcessMessage(MFT_MESSAGE_COMMAND_DRAIN, NULL));
 	HFG(_pTransform->ProcessMessage(MFT_MESSAGE_NOTIFY_END_STREAMING, NULL));
+
 exit_l:
+	PLOG(ERROR) << "Audio transformer stop failed";
 	return;
 }
 
@@ -173,5 +180,6 @@ bool CAudioTransform::Encode(uint8 *data, ulong length)
 	return true;
 
 exit_l:
+	PLOG(ERROR) << "Audio transformer encode failed";
 	return false;
 }

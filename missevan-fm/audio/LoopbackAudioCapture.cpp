@@ -1,6 +1,8 @@
 #include "StdAfx.h"
 #include "LoopbackAudioCapture.h"
 
+#include <base/logging.h>
+#include <base/string/stringprintf.h>
 #include <MMDeviceAPI.h>
 #include <AudioClient.h>
 
@@ -90,7 +92,7 @@ bool CLoopbackAudioCapture::Initialize(AudioFormat *format)
 	HRESULT hr = CoCreateInstance(__uuidof(MMDeviceEnumerator), NULL, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&deviceEnumerator));
 	if (FAILED(hr))
 	{
-		printf("Unable to instantiate device enumerator\n");
+		PLOG(ERROR) << "Unable to instantiate device enumerator.";
 		return false;
 	}
 
@@ -98,7 +100,7 @@ bool CLoopbackAudioCapture::Initialize(AudioFormat *format)
 	deviceEnumerator->Release();
 	if (FAILED(hr))
 	{
-		printf("Unable to retrieve default endpoint\n");
+		PLOG(ERROR) << "Unable to retrieve default endpoint.";
 		return false;
 	}
 	//
@@ -107,14 +109,14 @@ bool CLoopbackAudioCapture::Initialize(AudioFormat *format)
 	_ShutdownEvent = CreateEventEx(NULL, NULL, 0, EVENT_MODIFY_STATE | SYNCHRONIZE);
 	if (_ShutdownEvent == NULL)
 	{
-		printf("Unable to create shutdown event.\n");
+		PLOG(ERROR) << "Unable to create shutdown event.";
 		return false;
 	}
 
 	_AudioSamplesReadyEvent = CreateEventEx(NULL, NULL, 0, EVENT_MODIFY_STATE | SYNCHRONIZE);
 	if (_ShutdownEvent == NULL)
 	{
-		printf("Unable to create samples ready event.\n");
+		PLOG(ERROR) << "Unable to create samples ready event.";
 		return false;
 	}
 
@@ -145,13 +147,13 @@ bool CLoopbackAudioCapture::Start()
 	HRESULT hr = _ChatEndpoint->Activate(__uuidof(IAudioClient), CLSCTX_INPROC_SERVER, NULL, reinterpret_cast<void **>(&_AudioClient));
 	if (FAILED(hr))
 	{
-		printf("Unable to activate audio client.\n");
+		PLOG(ERROR) << "Unable to activate audio client.";
 		return false;
 	}
 	hr = _AudioClient->GetMixFormat(&mixFormat);
 	if (FAILED(hr))
 	{
-		printf("Unable to get mix format on audio client.\n");
+		PLOG(ERROR) << "Unable to get mix format on audio client.";
 		return false;
 	}
 
@@ -180,7 +182,7 @@ bool CLoopbackAudioCapture::Start()
 
 			if (!_Transform.Initialize(mixFormat, &_format))
 			{
-				printf("Unable to initialize audio transform.\n");
+				PLOG(ERROR) << "Unable to initialize audio transformer.";
 				return false;
 			}
 
@@ -188,7 +190,7 @@ bool CLoopbackAudioCapture::Start()
 			if (!_Transform.Start())
 			{
 				_Transform.Shutdown();
-				printf("Unable to start audio transform.\n");
+				PLOG(ERROR) << "Unable to start audio transformer.";
 				return false;
 			}
 
@@ -218,7 +220,7 @@ bool CLoopbackAudioCapture::Start()
 
 	if (FAILED(hr))
 	{
-		printf("Unable to initialize audio client.\n");
+		PLOG(ERROR) << "Unable to initialize audio client.";
 		return false;
 	}
 	
@@ -231,7 +233,7 @@ bool CLoopbackAudioCapture::Start()
 		hr = _AudioClient->SetEventHandle(_AudioSamplesReadyEvent);
 		if (FAILED(hr))
 		{
-			printf("Unable to set ready event.\n");
+			PLOG(ERROR) << "Unable to set ready event.";
 			return false;
 		}
 	}
@@ -239,7 +241,7 @@ bool CLoopbackAudioCapture::Start()
 	hr = _AudioClient->GetService(IID_PPV_ARGS(&_CaptureClient));
 	if (FAILED(hr))
 	{
-		printf("Unable to get Capture/Render client.\n");
+		PLOG(ERROR) << "Unable to get Capture/Render client.";
 		return false;
 	}
 
@@ -249,7 +251,7 @@ bool CLoopbackAudioCapture::Start()
 	_ChatThread = CreateThread(NULL, 0, _EventCallback ? WasapiEventThread : WasapiThread, this, 0, NULL);
 	if (_ChatThread == NULL)
 	{
-		printf("Unable to create transport thread.\n");
+		PLOG(ERROR) << "Unable to create transport thread.";
 		return false;
 	}
 
@@ -260,7 +262,7 @@ bool CLoopbackAudioCapture::Start()
 		hr = _AudioClient->Start();
 		if (FAILED(hr))
 		{
-			printf("Unable to start chat client.\n");
+			PLOG(ERROR) << "Unable to start chat client.";
 			return false;
 		}
 	}
@@ -316,7 +318,7 @@ DWORD CLoopbackAudioCapture::WasapiThread(LPVOID Context)
 	hr = pCapture->_AudioClient->GetBufferSize(&bufferFrameCount);
 	if (FAILED(hr))
 	{
-		printf("Unable to get buffer size.\n");
+		PLOG(ERROR) << "Unable to get buffer size.";
 		goto exit_l;
 	}
 
@@ -327,7 +329,7 @@ DWORD CLoopbackAudioCapture::WasapiThread(LPVOID Context)
 	hr = pCapture->_AudioClient->Start();
 	if (FAILED(hr))
 	{
-		printf("Unable to start chat client.\n");
+		PLOG(ERROR) << "Unable to start chat client.";
 		goto exit_l;
 	}
 
@@ -418,7 +420,9 @@ DWORD CLoopbackAudioCapture::WasapiEventThread(LPVOID Context)
 			// hr = pCapture->_AudioClient->GetCurrentPadding(&framesAvailable);
 			hr = pCapture->_CaptureClient->GetBuffer(&pData, &framesAvailable, &flags, NULL, NULL);
 			if (FAILED(hr)) {
-				printf("IAudioCaptureClient GetBuffer Error: 0x%08x\n", hr);
+				std::string error_code;
+				base::SStringPrintf(&error_code, "0x%08x", hr);
+				PLOG(ERROR) << "IAudioCaptureClient GetBuffer Error: " << error_code;
 				goto exit_l;
 			}
 
