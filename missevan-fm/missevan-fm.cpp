@@ -138,11 +138,13 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 	HANDLE hMutex = CreateMutex(NULL, FALSE, _T("MissEvanFM"));
 	if (GetLastError() == ERROR_ALREADY_EXISTS) {
 		CloseHandle(hMutex);
+		LOG(ERROR) << "mutex already exists";
 		MessageBox(NULL, _T("您好像已经有客户端在运行了！\n试试先关闭之前打开的客户端再重新打开吧！"), _T("提示"), MB_ICONINFORMATION | MB_OK);
 		return 1;
 	}
 
 	if (!global::Init(hInstance)) {
+		LOG(ERROR) << "global init failed!";
 		return 1;
 	}
 	DEFER(global::Uninit());

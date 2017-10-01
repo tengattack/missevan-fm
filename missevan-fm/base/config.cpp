@@ -11,6 +11,7 @@
 
 namespace config {
 	std::string proxy_url;
+	int audio_bitrate = 192;
 
 	bool getConfigData(const std::string& data)
 	{
@@ -18,8 +19,16 @@ namespace config {
 		Value *v = base::JSONReader::Read(data, true);
 		if (v) {
 			if (v->GetType() == Value::TYPE_DICTIONARY) {
+				DictionaryValue *t;
 				DictionaryValue *dv = (DictionaryValue *)v;
 				dv->GetString("proxy", &proxy_url);
+				if (dv->GetDictionary("audio", &t)) {
+					t->GetInteger("bitrate", &audio_bitrate);
+					if (audio_bitrate <= 64 || audio_bitrate > 1200) {
+						// reset to default
+						audio_bitrate = 192;
+					}
+				}
 				ret = true;
 			}
 			delete v;

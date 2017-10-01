@@ -5,6 +5,7 @@
 #include <base/string/stringprintf.h>
 #include <base/file/file.h>
 #include "base/global.h"
+#include "base/config.h"
 #include "audio/AACEncoder.h"
 #include "audio/MicAudioCapture.h"
 #include "audio/LoopbackAudioCapture.h"
@@ -128,9 +129,11 @@ bool LivePublisher::Start(const std::string& push_url)
 
 	if (!m_encoder) {
 		m_encoder = new CAACEncoder();
-		if (!m_encoder->Initialize(&m_format, 192000)) {
+		if (!m_encoder->Initialize(&m_format, config::audio_bitrate * 1000)) {
 			LOG(ERROR) << "Unable to initialize aac encoder.";
 			return false;
+		} else {
+			LOG(INFO) << "Initialize aac encoder " << config::audio_bitrate << "kbps";
 		}
 		m_encoder->RegisterCallback(EncoderProc, this);
 	}
