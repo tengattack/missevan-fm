@@ -3,6 +3,7 @@
 
 #include <base/logging.h>
 #include <base/string/stringprintf.h>
+#include <base/windows_version.h>
 #include <MMDeviceAPI.h>
 #include <AudioClient.h>
 
@@ -29,32 +30,10 @@ CLoopbackAudioCapture::~CLoopbackAudioCapture()
 	Shutdown();
 }
 
-typedef LONG NTSTATUS, *PNTSTATUS;
-#define STATUS_SUCCESS (0x00000000)
-
-typedef NTSTATUS (WINAPI* RtlGetVersionPtr)(PRTL_OSVERSIONINFOW);
-
-bool GetRealOSVersion(RTL_OSVERSIONINFOW *provi)
-{
-	HMODULE hMod = ::GetModuleHandleW(L"ntdll.dll");
-	if (hMod) {
-		RtlGetVersionPtr fxPtr = (RtlGetVersionPtr)::GetProcAddress(hMod, "RtlGetVersion");
-		if (fxPtr != nullptr) {
-			RTL_OSVERSIONINFOW rovi = { 0 };
-			rovi.dwOSVersionInfoSize = sizeof(rovi);
-			if (STATUS_SUCCESS == fxPtr(&rovi)) {
-				memcpy(provi, &rovi, sizeof(RTL_OSVERSIONINFOW));
-				return true;
-			}
-		}
-	}
-	return false;
-}
-
 //
 //  This sample only works on Windows 7
 //
-ulong IsWin7OrLater()
+ulong IsWin7OrLater(ulong *buildNumber)
 {
 	bool bWin7OrLater = true;
 
@@ -64,11 +43,14 @@ ulong IsWin7OrLater()
 	if (GetVersionEx(&ver)) {
 		bWin7OrLater = (ver.dwMajorVersion > 6) ||
 			((ver.dwMajorVersion == 6) && (ver.dwMinorVersion >= 1));
+		*buildNumber = ver.dwBuildNumber;
 	}
 
 	if (bWin7OrLater) {
-		RTL_OSVERSIONINFOW rovi;
-		if (GetRealOSVersion(&rovi)) {
+		RTL_OSVERSIONINFOW rovi = {};
+		rovi.dwOSVersionInfoSize = sizeof(rovi);
+		if (base::win::GetRealOSVersion(&rovi)) {
+			*buildNumber = rovi.dwBuildNumber;
 			return rovi.dwMajorVersion;
 		}
 	}
@@ -80,12 +62,15 @@ bool CLoopbackAudioCapture::Initialize(AudioFormat *format)
 {
 	CAudioCapture::_Initialize(format);
 
-	ulong osVersion = IsWin7OrLater();
+	ulong buildNum = 0;
+	ulong osVersion = IsWin7OrLater(&buildNum);
 	if (osVersion < 6) {
 		return false;
 	} else if (osVersion >= 10) {
-		// loopback event callback only works in Windows 10
-		_EventCallback = true;
+		// loopback event callback only works in part of Windows 10
+		if (buildNum >= 15000) {
+			_EventCallback = true;
+		}
 	}
 
 	IMMDeviceEnumerator *deviceEnumerator;

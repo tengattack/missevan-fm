@@ -8,6 +8,8 @@
 #include <base/defer_ptr.h>
 #include <base/at_exit.h>
 #include <base/logging.h>
+#include <base/string/stringprintf.h>
+#include <base/windows_version.h>
 
 #include "base/common.h"
 #include "base/global.h"
@@ -17,6 +19,45 @@
 #include "UserAccount.h"
 #include "MissEvanFMWindow.h"
 #include "MainTray.h"
+
+void LogSystemInfo()
+{
+	std::wstring strSystemInfo;
+	bool bWin7OrLater = true;
+
+	OSVERSIONINFOEX ver = {};
+	ver.dwOSVersionInfoSize = sizeof(ver);
+
+	if (GetVersionEx((OSVERSIONINFO *)&ver)) {
+		bWin7OrLater = (ver.dwMajorVersion > 6) ||
+			((ver.dwMajorVersion == 6) && (ver.dwMinorVersion >= 1));
+		std::wstring spInfo;
+		if (ver.wServicePackMajor) {
+			base::SStringPrintf(&spInfo, L" SP%d", (int)ver.wServicePackMajor);
+		}
+		base::SStringPrintf(&strSystemInfo, L"Windows %s %u.%u%s Build: %u",
+			ver.dwPlatformId == VER_PLATFORM_WIN32_NT ? L"NT" : L"Unknown", ver.dwMajorVersion, ver.dwMinorVersion,
+			spInfo.c_str(), ver.dwBuildNumber);
+	} else {
+		strSystemInfo = L"GetVersion failed";
+	}
+
+	if (bWin7OrLater) {
+		RTL_OSVERSIONINFOEXW rovi = {};
+		rovi.dwOSVersionInfoSize = sizeof(rovi);
+		if (base::win::GetRealOSVersion(&rovi)) {
+			std::wstring spInfo;
+			if (rovi.wServicePackMajor) {
+				base::SStringPrintf(&spInfo, L" SP%d", (int)rovi.wServicePackMajor);
+			}
+			base::SStringPrintf(&strSystemInfo, L"Windows %s %u.%u%s Build: %u",
+				rovi.dwPlatformId == VER_PLATFORM_WIN32_NT ? L"NT" : L"Unknown", rovi.dwMajorVersion, rovi.dwMinorVersion,
+				spInfo.c_str(), rovi.dwBuildNumber);
+		}
+	}
+
+	LOG(INFO) << strSystemInfo;
+}
 
 DWORD WINAPI UIThreadProc(LPVOID lpParam)
 {
@@ -91,6 +132,16 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 {
 #endif
 	DEFER_INIT();
+
+	// log system info, i.e. Windows version
+	LogSystemInfo();
+	HANDLE hMutex = CreateMutex(NULL, FALSE, _T("MissEvanFM"));
+	if (GetLastError() == ERROR_ALREADY_EXISTS) {
+		CloseHandle(hMutex);
+		MessageBox(NULL, _T("您好像已经有客户端在运行了！\n试试先关闭之前打开的客户端再重新打开吧！"), _T("提示"), MB_ICONINFORMATION | MB_OK);
+		return 1;
+	}
+
 	if (!global::Init(hInstance)) {
 		return 1;
 	}

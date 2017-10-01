@@ -2,6 +2,9 @@
 #include "LivePublisher.h"
 
 #include <base/logging.h>
+#include <base/string/stringprintf.h>
+#include <base/file/file.h>
+#include "base/global.h"
 #include "audio/AACEncoder.h"
 #include "audio/MicAudioCapture.h"
 #include "audio/LoopbackAudioCapture.h"
@@ -11,6 +14,10 @@
 #define LPM_QUIT    WM_QUIT
 
 #define BUFFER_TIME 5000
+
+#ifdef _DEBUG
+base::CFile file;
+#endif
 
 LivePublisher::LivePublisher()
 	: m_rtmp_ptr(NULL)
@@ -28,10 +35,18 @@ LivePublisher::LivePublisher()
 	m_format.sampleRate = 48000;
 	m_format.bits = 16;
 	m_format.channels = 2;
+#ifdef _DEBUG
+	std::wstring aacFile(global::wpath);
+	aacFile += L"record.aac";
+	file.Open(base::kFileCreate, aacFile.c_str());
+#endif
 }
 
 LivePublisher::~LivePublisher()
 {
+#ifdef _DEBUG
+	file.Close();
+#endif
 	Shutdown();
 }
 
@@ -240,6 +255,9 @@ bool LivePublisher::EnableLookbackCapture(bool bEnable)
 		cap->slice.ClearBuffer();
 		cap->active = false;
 		bRet = cap->capture->Start();
+		if (!bRet) {
+			LOG(ERROR) << "Live Publisher enable loopback capture failed";
+		}
 	} else {
 		if (!m_enable_loopback) {
 			return true;
@@ -469,7 +487,11 @@ void LivePublisher::EncoderProc(uint8 *data, ulong length, ulong samples, void *
 	d->timeoffset = m_time;
 	memcpy(d->data, data, length);
 
-	// printf("encoded: %u timeoffset: %u time: %u samples: %u\n", length, d->timeoffset, RTMP_GetTime() - publisher->m_start_time, samples);
+#ifdef _DEBUG
+	std::string info;
+	base::SStringPrintf(&info, "encoded: %u timeoffset: %u time: %u samples: %u", length, d->timeoffset, RTMP_GetTime() - publisher->m_start_time, samples);
+	VLOG(1) << info;
+#endif
 
 	publisher->m_time = m_time;
 
@@ -481,6 +503,7 @@ DWORD LivePublisher::MixerProc(LPVOID context)
 	LivePublisher *publisher = (LivePublisher *)context;
 	bool isStreaming = true;
 	MSG msg;
+	int sent;
 
 	PeekMessage(&msg, NULL, WM_USER, WM_USER, PM_REMOVE);
 	publisher->m_mixer_event.Set();
@@ -503,7 +526,13 @@ DWORD LivePublisher::MixerProc(LPVOID context)
 			break;
 		case LPM_DATA: {
 			AACData *d = (AACData *)msg.lParam;
-			publisher->m_rtmp_ptr->SendAudioAACData(d->data, d->length, d->timeoffset);
+			sent = publisher->m_rtmp_ptr->SendAudioAACData(d->data, d->length, d->timeoffset);
+#ifdef _DEBUG
+			std::string info;
+			base::SStringPrintf(&info, "timeoffset: %u sent: %d", d->timeoffset, sent);
+			VLOG(1) << info;
+			file.Write(d->data, d->length);
+#endif
 			free(d->data);
 			free(d);
 			break;
