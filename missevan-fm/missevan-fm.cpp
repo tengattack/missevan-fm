@@ -133,8 +133,11 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 #endif
 	DEFER_INIT();
 
+	LOG(INFO) << "MissEvanFM v" << APP_VERSION;
 	// log system info, i.e. Windows version
 	LogSystemInfo();
+
+	// check MissEvanFM is already running
 	HANDLE hMutex = CreateMutex(NULL, FALSE, _T("MissEvanFM"));
 	if (GetLastError() == ERROR_ALREADY_EXISTS) {
 		CloseHandle(hMutex);
