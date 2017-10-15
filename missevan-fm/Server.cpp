@@ -127,10 +127,10 @@ Server::context_ptr Server::on_tls_init(Server* s, tls_mode mode, websocketpp::c
 		}
 
 		if (SSL_CTX_set_cipher_list(ctx->native_handle(), ciphers.c_str()) != 1) {
-			std::cout << "Error setting cipher list" << std::endl;
+			LOG(ERROR) << "Server TLS Error setting cipher list";
 		}
 	} catch (std::exception& e) {
-		std::cout << "Exception: " << e.what() << std::endl;
+		LOG(ERROR) << "Server TLS Exception: " << e.what();
 	}
 	return ctx;
 }
@@ -509,9 +509,9 @@ bool Server::start()
 		m_server.run();
 		return true;
 	} catch (websocketpp::exception const & e) {
-		std::cout << e.what() << std::endl;
+		LOG(ERROR) << "Server Initialize Exception: " << e.what();
 	} catch (...) {
-		std::cout << "other exception" << std::endl;
+		PLOG(ERROR) << "Server Initialize Exception";
 	}
 
 	return false;

@@ -140,20 +140,21 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 	// check MissEvanFM is already running
 	HANDLE hMutex = CreateMutex(NULL, FALSE, _T("MissEvanFM"));
 	if (GetLastError() == ERROR_ALREADY_EXISTS) {
+		PLOG(ERROR) << "mutex already exists";
 		CloseHandle(hMutex);
-		LOG(ERROR) << "mutex already exists";
 		MessageBox(NULL, _T("您好像已经有客户端在运行了！\n试试先关闭之前打开的客户端再重新打开吧！"), _T("提示"), MB_ICONINFORMATION | MB_OK);
 		return 1;
 	}
 
 	if (!global::Init(hInstance)) {
-		LOG(ERROR) << "global init failed!";
+		PLOG(ERROR) << "global init failed!";
 		return 1;
 	}
 	DEFER(global::Uninit());
 
 	if (!global::NetInit()) {
-		LOG(ERROR) << "network init failed!";
+		PLOG(ERROR) << "network init failed!";
+		return 1;
 	}
 	DEFER(global::NetUninit());
 
@@ -188,7 +189,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 	HANDLE hThread = CreateThread(NULL, NULL, UIThreadProc, &server, NULL, NULL);
 
 	if (!hThread) {
-		LOG(ERROR) << "create ui thread failed!";
+		PLOG(ERROR) << "create ui thread failed!";
 	}
 	if (!server.start()) {
 		LOG(ERROR) << "start server failed!";

@@ -188,8 +188,10 @@ bool LivePublisher::Start(const std::string& push_url)
 
 void LivePublisher::Stop()
 {
-	LOG(INFO) << "Live Publisher stopping...";
-
+	if (m_mixer_thread)
+	{
+		LOG(INFO) << "Live Publisher stopping...";
+	}
 	for (int i = 0; i < m_captures.size(); i++)
 	{
 		m_captures[i]->capture->Stop();
