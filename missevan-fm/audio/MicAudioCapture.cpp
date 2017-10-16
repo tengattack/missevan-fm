@@ -529,6 +529,13 @@ void CMicAudioCapture::Stop()
 		CloseHandle(_CaptureThread);
 		_CaptureThread = NULL;
 	}
+
+	if (_EnableTransform)
+	{
+		_Transform.Stop();
+		_Transform.Shutdown();
+		_EnableTransform = false;
+	}
 }
 
 
@@ -614,34 +621,6 @@ DWORD CMicAudioCapture::DoCaptureThread()
 					_callback(pData, framesAvailable * _format.channels * _format.bits / 8, _user_data);
 				}
 
-				/* UINT32 framesToCopy = std::min(framesAvailable, static_cast<UINT32>((_CaptureBufferSize - _CurrentCaptureIndex) / _FrameSize));
-				if (framesToCopy != 0)
-				{
-					//
-					//  The flags on capture tell us information about the data.
-					//
-					//  We only really care about the silent flag since we want to put frames of silence into the buffer
-					//  when we receive silence.  We rely on the fact that a logical bit 0 is silence for both float and int formats.
-					//
-					if (flags & AUDCLNT_BUFFERFLAGS_SILENT)
-					{
-						//
-						//  Fill 0s from the capture buffer to the output buffer.
-						//
-						ZeroMemory(&_CaptureBuffer[_CurrentCaptureIndex], framesToCopy*_FrameSize);
-					}
-					else
-					{
-						//
-						//  Copy data from the audio engine buffer to the output buffer.
-						//
-						CopyMemory(&_CaptureBuffer[_CurrentCaptureIndex], pData, framesToCopy*_FrameSize);
-					}
-					//
-					//  Bump the capture buffer pointer.
-					//
-					_CurrentCaptureIndex += framesToCopy*_FrameSize;
-				} */
 				hr = _CaptureClient->ReleaseBuffer(framesAvailable);
 				if (FAILED(hr))
 				{

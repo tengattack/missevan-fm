@@ -133,6 +133,10 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 #endif
 	DEFER_INIT();
 
+	logging::LoggingSettings settings;
+	settings.logging_dest = logging::LOG_TO_FILE;
+	logging::InitLogging(settings);
+
 	LOG(INFO) << "MissEvanFM v" << APP_VERSION;
 	// log system info, i.e. Windows version
 	LogSystemInfo();

@@ -382,7 +382,7 @@ void LivePublisher::_CaptureProc(uint8 *data, ulong length, LivePublisherCapture
 		free(sources);
 #endif
 	}
-	ulong t = RTMP_GetTime() - m_start_time;
+	ulong t = GetTickCount() - m_start_time;
 
 	AutoLock _(m_lock);
 
@@ -484,7 +484,6 @@ void LivePublisher::EncoderProc(uint8 *data, ulong length, ulong samples, void *
 
 	AudioFormat *format = &publisher->m_format;
 	uint32 m_time = publisher->m_time;
-	m_time += samples * 1000 / (format->channels * format->sampleRate);
 
 	AACData *d = (AACData *)malloc(sizeof(AACData));
 	d->data = (uint8 *)malloc(length);
@@ -494,10 +493,11 @@ void LivePublisher::EncoderProc(uint8 *data, ulong length, ulong samples, void *
 
 #ifdef _DEBUG
 	std::string info;
-	base::SStringPrintf(&info, "encoded: %u timeoffset: %u time: %u samples: %u", length, d->timeoffset, RTMP_GetTime() - publisher->m_start_time, samples);
+	base::SStringPrintf(&info, "encoded: %u timeoffset: %u time: %u samples: %u", length, d->timeoffset, GetTickCount(), samples);
 	VLOG(1) << info;
 #endif
 
+	m_time += samples * 1000 / (format->channels * format->sampleRate);
 	publisher->m_time = m_time;
 
 	PostThreadMessage(publisher->m_mixer_threadid, LPM_DATA, NULL, (LPARAM)d);
@@ -522,7 +522,7 @@ DWORD LivePublisher::MixerProc(LPVOID context)
 			if (publisher->m_rtmp_ptr->Start(publisher->m_push_url.c_str())) {
 				if (publisher->m_rtmp_ptr->SendAudioAACHeader(&publisher->m_format)) {
 					publisher->m_started = true;
-					publisher->m_start_time = RTMP_GetTime();
+					publisher->m_start_time = GetTickCount();
 				} else {
 					LOG(ERROR) << "Send Audio AAC Header failed";
 				}
