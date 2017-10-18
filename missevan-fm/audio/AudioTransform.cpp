@@ -2,6 +2,7 @@
 #include "AudioTransform.h"
 
 #include <base/logging.h>
+#include <boost/format.hpp>
 #include <common/Buffer.h>
 #include <mfapi.h>
 #include <mftransform.h>
@@ -96,6 +97,9 @@ exit_l:
 
 void CAudioTransform::Stop()
 {
+	if (_pTransform == NULL) {
+		return;
+	}
 	HFG(_pTransform->ProcessMessage(MFT_MESSAGE_NOTIFY_END_OF_STREAM, NULL));
 	HFG(_pTransform->ProcessMessage(MFT_MESSAGE_COMMAND_DRAIN, NULL));
 	HFG(_pTransform->ProcessMessage(MFT_MESSAGE_NOTIFY_END_STREAMING, NULL));
@@ -154,6 +158,9 @@ bool CAudioTransform::Encode(uint8 *data, ulong length)
 		hr = _pTransform->ProcessOutput(0, 1, &outputDataBuffer, &dwStatus);
 		if (hr == MF_E_TRANSFORM_NEED_MORE_INPUT) {
 			// conversion end
+			break;
+		} else if (FAILED(hr)) {
+			PLOG(ERROR) << "ProcessOutput error: " << boost::format("0x%08x") % hr;
 			break;
 		}
 

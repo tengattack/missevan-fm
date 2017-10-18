@@ -179,12 +179,15 @@ bool CLoopbackAudioCapture::Start()
 				return false;
 			}
 
+			LOG(INFO) << "Enable audio transformer (CLoopbackAudioCapture)";
 			_EnableTransform = true;
 		}
 
 		if (cloestWaveFormat) {
 			CoTaskMemFree(cloestWaveFormat);
 		}
+	} else {
+		memcpy(&_waveFormat, mixFormat, sizeof(_waveFormat));
 	}
 	
 	//
@@ -334,10 +337,18 @@ DWORD CLoopbackAudioCapture::WasapiThread(LPVOID Context)
 			while (packetLength != 0)
 			{
 				// Get the available data in the shared buffer.
-				HFG(pCapture->_CaptureClient->GetBuffer(
+				hr = pCapture->_CaptureClient->GetBuffer(
 					&pData,
 					&framesAvailable,
-					&flags, NULL, NULL));
+					&flags, NULL, NULL);
+
+				if (FAILED(hr)) {
+					PLOG(ERROR) << "Unable to get capture buffer: " << boost::format("0x%08x") % hr;
+					goto exit_l;
+				} else if (hr != S_OK) {
+					// may AUDCLNT_S_BUFFER_EMPTY
+					break;
+				}
 
 				if (flags & AUDCLNT_BUFFERFLAGS_SILENT)
 				{

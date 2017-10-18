@@ -288,14 +288,6 @@ bool CMicAudioCapture::Initialize(AudioFormat *format)
 {
 	CAudioCapture::_Initialize(format);
 
-	_waveFormat.wFormatTag = WAVE_FORMAT_PCM;
-	_waveFormat.nChannels = format->channels;
-	_waveFormat.nSamplesPerSec = format->sampleRate;
-	_waveFormat.wBitsPerSample = format->bits;
-	_waveFormat.nBlockAlign = (_waveFormat.wBitsPerSample / 8) * _waveFormat.nChannels;
-	_waveFormat.nAvgBytesPerSec = _waveFormat.nSamplesPerSec * _waveFormat.nBlockAlign;
-	_waveFormat.cbSize = 0;
-
 	//
 	//  Create our shutdown and samples ready events- we want auto reset events that start in the not-signaled state.
 	//
@@ -337,94 +329,6 @@ bool CMicAudioCapture::Initialize(AudioFormat *format)
 	{
 		PLOG(ERROR) << "Unable to retrieve default endpoint: " << boost::format("0x%08x") % hr;
 		return false;
-	}
-
-	//
-	//  Now activate an IAudioClient object on our preferred endpoint and retrieve the mix format for that endpoint.
-	//
-	hr = _Endpoint->Activate(__uuidof(IAudioClient), CLSCTX_INPROC_SERVER, NULL, reinterpret_cast<void **>(&_AudioClient));
-	if (FAILED(hr))
-	{
-		PLOG(ERROR) << "Unable to activate audio client: " << boost::format("0x%08x") % hr;
-		return false;
-	}
-
-	WAVEFORMATEX *mixFormat = NULL;
-	hr = _AudioClient->GetMixFormat(&mixFormat);
-	if (FAILED(hr))
-	{
-		PLOG(ERROR) << "Unable to get mix format on audio client: " << boost::format("0x%08x") % hr;
-		return false;
-	}
-
-	if (mixFormat->wFormatTag != WAVE_FORMAT_PCM
-		|| mixFormat->nSamplesPerSec != _format.sampleRate
-		|| mixFormat->nChannels != _format.channels
-		|| mixFormat->wBitsPerSample != _format.bits)
-	{
-		WAVEFORMATEXTENSIBLE *cloestWaveFormat = NULL;
-		_waveFormat.wFormatTag = WAVE_FORMAT_PCM;
-		_waveFormat.nSamplesPerSec = _format.sampleRate;
-		_waveFormat.nChannels = _format.channels;
-		_waveFormat.wBitsPerSample = _format.bits;
-		_waveFormat.nBlockAlign = (_waveFormat.nChannels * _waveFormat.wBitsPerSample) / 8;
-		_waveFormat.nAvgBytesPerSec = _waveFormat.nSamplesPerSec * _waveFormat.nBlockAlign;
-		_waveFormat.cbSize = 0;
-
-		// try initialize for specify format
-		hr = _AudioClient->IsFormatSupported(AUDCLNT_SHAREMODE_SHARED, &_waveFormat, (WAVEFORMATEX **)&cloestWaveFormat);
-
-		if (hr == S_OK) {
-			// the format is supported
-			memcpy(mixFormat, &_waveFormat, sizeof(_waveFormat));
-		} else {
-			memcpy(&_waveFormat, mixFormat, sizeof(_waveFormat));
-
-			if (!_Transform.Initialize(mixFormat, &_format))
-			{
-				PLOG(ERROR) << "Unable to initialize audio transformer.";
-				return false;
-			}
-
-			_Transform.RegisterCallback(TransformProc, this);
-			if (!_Transform.Start())
-			{
-				_Transform.Shutdown();
-				PLOG(ERROR) << "Unable to start audio transformer.";
-				return false;
-			}
-
-			_EnableTransform = true;
-		}
-
-		if (cloestWaveFormat) {
-			CoTaskMemFree(cloestWaveFormat);
-		}
-	}
-
-	hr = _AudioClient->Initialize(AUDCLNT_SHAREMODE_SHARED, AUDCLNT_STREAMFLAGS_EVENTCALLBACK | AUDCLNT_STREAMFLAGS_NOPERSIST, _EngineLatencyInMS * 10000, 0, mixFormat, NULL);
-
-	_FrameSize = (mixFormat->wBitsPerSample / 8) * mixFormat->nChannels;
-	CoTaskMemFree(mixFormat);
-	mixFormat = NULL;
-
-	if (FAILED(hr))
-	{
-		PLOG(ERROR) << "Unable to initialize audio client: " << boost::format("0x%08x") % hr;
-		return false;
-	}
-
-	if (!InitializeAudioEngine())
-	{
-		return false;
-	}
-
-	if (_EnableStreamSwitch)
-	{
-		if (!InitializeStreamSwitch())
-		{
-			return false;
-		}
 	}
 
 	return true;
@@ -476,6 +380,97 @@ void CMicAudioCapture::Shutdown()
 bool CMicAudioCapture::Start()
 {
 	HRESULT hr;
+	WAVEFORMATEX *mixFormat = NULL;
+
+	//
+	//  Now activate an IAudioClient object on our preferred endpoint and retrieve the mix format for that endpoint.
+	//
+	hr = _Endpoint->Activate(__uuidof(IAudioClient), CLSCTX_INPROC_SERVER, NULL, reinterpret_cast<void **>(&_AudioClient));
+	if (FAILED(hr))
+	{
+		PLOG(ERROR) << "Unable to activate audio client: " << boost::format("0x%08x") % hr;
+		return false;
+	}
+
+	hr = _AudioClient->GetMixFormat(&mixFormat);
+	if (FAILED(hr))
+	{
+		PLOG(ERROR) << "Unable to get mix format on audio client: " << boost::format("0x%08x") % hr;
+		return false;
+	}
+
+	if (mixFormat->wFormatTag != WAVE_FORMAT_PCM
+		|| mixFormat->nSamplesPerSec != _format.sampleRate
+		|| mixFormat->nChannels != _format.channels
+		|| mixFormat->wBitsPerSample != _format.bits)
+	{
+		WAVEFORMATEXTENSIBLE *cloestWaveFormat = NULL;
+		_waveFormat.wFormatTag = WAVE_FORMAT_PCM;
+		_waveFormat.nSamplesPerSec = _format.sampleRate;
+		_waveFormat.nChannels = _format.channels;
+		_waveFormat.wBitsPerSample = _format.bits;
+		_waveFormat.nBlockAlign = (_waveFormat.nChannels * _waveFormat.wBitsPerSample) / 8;
+		_waveFormat.nAvgBytesPerSec = _waveFormat.nSamplesPerSec * _waveFormat.nBlockAlign;
+		_waveFormat.cbSize = 0;
+
+		// try initialize for specify format
+		hr = _AudioClient->IsFormatSupported(AUDCLNT_SHAREMODE_SHARED, &_waveFormat, (WAVEFORMATEX **)&cloestWaveFormat);
+
+		if (hr == S_OK) {
+			// the format is supported
+			memcpy(mixFormat, &_waveFormat, sizeof(_waveFormat));
+		} else {
+			memcpy(&_waveFormat, mixFormat, sizeof(_waveFormat));
+
+			if (!_Transform.Initialize(mixFormat, &_format))
+			{
+				PLOG(ERROR) << "Unable to initialize audio transformer.";
+				return false;
+			}
+
+			_Transform.RegisterCallback(TransformProc, this);
+			if (!_Transform.Start())
+			{
+				_Transform.Shutdown();
+				PLOG(ERROR) << "Unable to start audio transformer.";
+				return false;
+			}
+
+			LOG(INFO) << "Enable audio transformer (CMicAudioCapture)";
+			_EnableTransform = true;
+		}
+
+		if (cloestWaveFormat) {
+			CoTaskMemFree(cloestWaveFormat);
+		}
+	} else {
+		memcpy(&_waveFormat, mixFormat, sizeof(_waveFormat));
+	}
+
+	hr = _AudioClient->Initialize(AUDCLNT_SHAREMODE_SHARED, AUDCLNT_STREAMFLAGS_EVENTCALLBACK | AUDCLNT_STREAMFLAGS_NOPERSIST, _EngineLatencyInMS * 10000, 0, mixFormat, NULL);
+
+	_FrameSize = (mixFormat->wBitsPerSample / 8) * mixFormat->nChannels;
+	CoTaskMemFree(mixFormat);
+	mixFormat = NULL;
+
+	if (FAILED(hr))
+	{
+		PLOG(ERROR) << "Unable to initialize audio client: " << boost::format("0x%08x") % hr;
+		return false;
+	}
+
+	if (!InitializeAudioEngine())
+	{
+		return false;
+	}
+
+	if (_EnableStreamSwitch)
+	{
+		if (!InitializeStreamSwitch())
+		{
+			return false;
+		}
+	}
 
 	//
 	//  Now create the thread which is going to drive the capture.
@@ -505,8 +500,6 @@ bool CMicAudioCapture::Start()
 //
 void CMicAudioCapture::Stop()
 {
-	HRESULT hr;
-
 	//
 	//  Tell the capture thread to shut down, wait for the thread to complete then clean up all the stuff we 
 	//  allocated in Start().
@@ -516,10 +509,14 @@ void CMicAudioCapture::Stop()
 		SetEvent(_ShutdownEvent);
 	}
 
-	hr = _AudioClient->Stop();
-	if (FAILED(hr))
+	if (_AudioClient)
 	{
-		PLOG(ERROR) << "Unable to stop audio client: " << boost::format("0x%08x") % hr;
+		HRESULT hr;
+		hr = _AudioClient->Stop();
+		if (FAILED(hr))
+		{
+			PLOG(ERROR) << "Unable to stop audio client: " << boost::format("0x%08x") % hr;
+		}
 	}
 
 	if (_CaptureThread)
@@ -536,6 +533,11 @@ void CMicAudioCapture::Stop()
 		_Transform.Shutdown();
 		_EnableTransform = false;
 	}
+
+	SafeRelease(&_AudioClient);
+	SafeRelease(&_CaptureClient);
+
+	memset(&_waveFormat, 0, sizeof(_waveFormat));
 }
 
 
@@ -571,6 +573,7 @@ DWORD CMicAudioCapture::DoCaptureThread()
 			PLOG(ERROR) << "Unable to enable MMCSS on capture thread";
 		}
 	}
+
 	while (stillPlaying)
 	{
 		HRESULT hr;
@@ -605,6 +608,10 @@ DWORD CMicAudioCapture::DoCaptureThread()
 			hr = _CaptureClient->GetBuffer(&pData, &framesAvailable, &flags, NULL, NULL);
 			if (SUCCEEDED(hr))
 			{
+				if (hr != S_OK) {
+					// may AUDCLNT_S_BUFFER_EMPTY
+					continue;
+				}
 				if (flags & AUDCLNT_BUFFERFLAGS_SILENT)
 				{
 					if (_callback) {
@@ -626,6 +633,8 @@ DWORD CMicAudioCapture::DoCaptureThread()
 				{
 					PLOG(ERROR) << "Unable to release capture buffer: " << boost::format("0x%08x") % hr;
 				}
+			} else {
+				PLOG(ERROR) << "Unable to get capture buffer: " << boost::format("0x%08x") % hr;
 			}
 			break;
 		}

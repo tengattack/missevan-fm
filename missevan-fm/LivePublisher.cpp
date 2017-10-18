@@ -386,12 +386,12 @@ void LivePublisher::_CaptureProc(uint8 *data, ulong length, LivePublisherCapture
 
 	AutoLock _(m_lock);
 
-	if (data == NULL) {
+	/* if (data == NULL) {
 		cap->active = false;
 		return;
 	} else {
 		cap->active = true;
-	}
+	} */
 
 	int active_count = GetActiveCaptureCount();
 	if (active_count == 1)
@@ -472,7 +472,21 @@ void LivePublisher::_CaptureProc(uint8 *data, ulong length, LivePublisherCapture
 void LivePublisher::CaptureProc(uint8 *data, ulong length, void *user_data)
 {
 	LivePublisherCapture *cap = (LivePublisherCapture *)user_data;
+	bool alloc = false;
+	if (data == NULL) {
+		data = (uint8 *)malloc(length);
+		if (data == NULL) {
+			return;
+		}
+		ZeroMemory(data, length);
+		alloc = true;
+	} else {
+		cap->active = true;
+	}
 	cap->publisher->_CaptureProc(data, length, cap);
+	if (alloc) {
+		free(data);
+	}
 }
 
 void LivePublisher::EncoderProc(uint8 *data, ulong length, ulong samples, void *user_data)
