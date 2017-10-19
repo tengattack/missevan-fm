@@ -60,7 +60,7 @@ ulong IsWin7OrLater(ulong *buildNumber)
 
 bool CLoopbackAudioCapture::Initialize(AudioFormat *format)
 {
-	CAudioCapture::_Initialize(format);
+	CAudioCapture::Initialize(format);
 
 	ulong buildNum = 0;
 	ulong osVersion = IsWin7OrLater(&buildNum);
@@ -73,16 +73,14 @@ bool CLoopbackAudioCapture::Initialize(AudioFormat *format)
 		}
 	}
 
-	IMMDeviceEnumerator *deviceEnumerator;
-	HRESULT hr = CoCreateInstance(__uuidof(MMDeviceEnumerator), NULL, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&deviceEnumerator));
+	HRESULT hr = CoCreateInstance(__uuidof(MMDeviceEnumerator), NULL, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&_DeviceEnumerator));
 	if (FAILED(hr))
 	{
 		PLOG(ERROR) << "Unable to instantiate device enumerator: " << boost::format("0x%08x") % hr;
 		return false;
 	}
 
-	hr = deviceEnumerator->GetDefaultAudioEndpoint(eRender, eMultimedia, &_ChatEndpoint);
-	deviceEnumerator->Release();
+	hr = _DeviceEnumerator->GetDefaultAudioEndpoint(eRender, eMultimedia, &_ChatEndpoint);
 	if (FAILED(hr))
 	{
 		PLOG(ERROR) << "Unable to retrieve default endpoint: " << boost::format("0x%08x") % hr;
@@ -124,6 +122,7 @@ void CLoopbackAudioCapture::Shutdown()
 	}
 
 	SafeRelease(&_ChatEndpoint);
+	SafeRelease(&_DeviceEnumerator);
 }
 
 bool CLoopbackAudioCapture::Start()
@@ -233,14 +232,22 @@ bool CLoopbackAudioCapture::Start()
 		return false;
 	}
 
-	//
-	//  Now create the thread which is going to drive the "Chat".
-	//
-	_ChatThread = CreateThread(NULL, 0, _EventCallback ? WasapiEventThread : WasapiThread, this, 0, NULL);
+	if (!InitializeStreamSwitch(_AudioClient, eRender, eMultimedia))
+	{
+		return false;
+	}
+
 	if (_ChatThread == NULL)
 	{
-		PLOG(ERROR) << "Unable to create transport thread";
-		return false;
+		//
+		//  Now create the thread which is going to drive the "Chat".
+		//
+		_ChatThread = CreateThread(NULL, 0, _EventCallback ? WasapiEventThread : WasapiThread, this, 0, NULL);
+		if (_ChatThread == NULL)
+		{
+			PLOG(ERROR) << "Unable to create transport thread";
+			return false;
+		}
 	}
 
 	if (_EventCallback) {
@@ -287,13 +294,28 @@ void CLoopbackAudioCapture::Stop()
 	memset(&_waveFormat, 0, sizeof(_waveFormat));
 }
 
+bool CLoopbackAudioCapture::HandleStreamSwitchEvent()
+{
+	SafeRelease(&_ChatEndpoint);
+	SafeRelease(&_AudioClient);
+	SafeRelease(&_CaptureClient);
+
+	HRESULT hr = _DeviceEnumerator->GetDefaultAudioEndpoint(eRender, eMultimedia, &_ChatEndpoint);
+	if (FAILED(hr))
+	{
+		PLOG(ERROR) << "Unable to retrieve default endpoint: " << boost::format("0x%08x") % hr;
+		return false;
+	}
+
+	return Start();
+}
+
 DWORD CLoopbackAudioCapture::WasapiThread(LPVOID Context)
 {
 	CLoopbackAudioCapture *pCapture = static_cast<CLoopbackAudioCapture *>(Context);
 
 	bool stillPlaying = true;
 	WAVEFORMATEX *pwfx = &pCapture->_waveFormat;
-	HANDLE _ShutdownEvent = pCapture->_ShutdownEvent;
 	REFERENCE_TIME hnsRequestedDuration = REFTIMES_PER_SEC;
 	REFERENCE_TIME hnsActualDuration;
 	UINT32 bufferFrameCount;
@@ -321,16 +343,32 @@ DWORD CLoopbackAudioCapture::WasapiThread(LPVOID Context)
 		goto exit_l;
 	}
 
+	HANDLE waitArray[2] = { pCapture->_ShutdownEvent, pCapture->_StreamSwitchEvent };
+
 	while (stillPlaying)
 	{
 		// Sleep for half the buffer duration.
-		DWORD waitResult = WaitForSingleObject(_ShutdownEvent, hnsActualDuration / REFTIMES_PER_MILLISEC / 2);
+		DWORD waitResult = WaitForMultipleObjects(2, waitArray, FALSE, hnsActualDuration / REFTIMES_PER_MILLISEC / 2);
 
 		switch (waitResult) {
-		case WAIT_OBJECT_0:
+		case WAIT_OBJECT_0 + 0: /* _ShutdownEvent */
 			stillPlaying = false;
 			break;
+		case WAIT_OBJECT_0 + 1: /* _StreamSwitchEvent */
+			if (!pCapture->HandleStreamSwitchEvent())
+			{
+				// stillPlaying = false;
+			}
+			else
+			{
+				pCapture->_InStreamSwitch = false;
+			}
+			break;
 		case WAIT_TIMEOUT: {
+
+			if (pCapture->_CaptureClient == NULL) {
+				break;
+			}
 
 			HFG(pCapture->_CaptureClient->GetNextPacketSize(&packetLength));
 
@@ -355,7 +393,7 @@ DWORD CLoopbackAudioCapture::WasapiThread(LPVOID Context)
 					if (pCapture->_callback) {
 						AudioFormat *format = &pCapture->_format;
 						uint32 length = framesAvailable * format->channels * format->bits / 8;
-						pCapture->_callback(NULL, length, pCapture->_user_data);
+						pCapture->_callback(kCaptureData, NULL, length, pCapture->_user_data);
 					}
 				}
 				else if (pCapture->_EnableTransform)
@@ -365,7 +403,7 @@ DWORD CLoopbackAudioCapture::WasapiThread(LPVOID Context)
 				else if (pCapture->_callback)
 				{
 					AudioFormat *format = &pCapture->_format;
-					pCapture->_callback(pData, framesAvailable * format->channels * format->bits / 8, pCapture->_user_data);
+					pCapture->_callback(kCaptureData, pData, framesAvailable * format->channels * format->bits / 8, pCapture->_user_data);
 				}
 
 				HFG(pCapture->_CaptureClient->ReleaseBuffer(framesAvailable));
@@ -390,18 +428,34 @@ DWORD CLoopbackAudioCapture::WasapiEventThread(LPVOID Context)
 	bool stillPlaying = true;
 	CLoopbackAudioCapture *pCapture = static_cast<CLoopbackAudioCapture *>(Context);
 	WAVEFORMATEX *pwfx = &pCapture->_waveFormat;
-	HANDLE waitArray[2] = { pCapture->_ShutdownEvent, pCapture->_AudioSamplesReadyEvent };
+	HANDLE waitArray[3] = { pCapture->_ShutdownEvent, pCapture->_StreamSwitchEvent, pCapture->_AudioSamplesReadyEvent };
 
 	while (stillPlaying)
 	{
 		HRESULT hr;
-		DWORD waitResult = WaitForMultipleObjects(2, waitArray, FALSE, INFINITE);
+		DWORD waitResult = WaitForMultipleObjects(3, waitArray, FALSE, INFINITE);
 		switch (waitResult)
 		{
 		case WAIT_OBJECT_0 + 0:
 			stillPlaying = false;       // We're done, exit the loop.
 			break;
 		case WAIT_OBJECT_0 + 1: {
+			if (!pCapture->HandleStreamSwitchEvent())
+			{
+				// stillPlaying = false;
+			}
+			else
+			{
+				pCapture->_InStreamSwitch = false;
+			}
+			break;
+		}
+		case WAIT_OBJECT_0 + 2: {
+
+			if (pCapture->_CaptureClient == NULL) {
+				break;
+			}
+
 			//
 			//  Either stream silence to the audio client or ignore the audio samples.
 			//
@@ -425,7 +479,7 @@ DWORD CLoopbackAudioCapture::WasapiEventThread(LPVOID Context)
 				if (pCapture->_callback) {
 					AudioFormat *format = &pCapture->_format;
 					uint32 length = framesAvailable * format->channels * format->bits / 8;
-					pCapture->_callback(NULL, length, pCapture->_user_data);
+					pCapture->_callback(kCaptureData, NULL, length, pCapture->_user_data);
 				}
 			}
 			else if (pCapture->_EnableTransform)
@@ -435,7 +489,7 @@ DWORD CLoopbackAudioCapture::WasapiEventThread(LPVOID Context)
 			else if (pCapture->_callback)
 			{
 				AudioFormat *format = &pCapture->_format;
-				pCapture->_callback(pData, framesAvailable * format->channels * format->bits / 8, pCapture->_user_data);
+				pCapture->_callback(kCaptureData, pData, framesAvailable * format->channels * format->bits / 8, pCapture->_user_data);
 			}
 
 			hr = pCapture->_CaptureClient->ReleaseBuffer(framesAvailable);
@@ -458,6 +512,6 @@ void CLoopbackAudioCapture::TransformProc(uint8 *data, ulong length, ulong sampl
 	CLoopbackAudioCapture *pCapture = (CLoopbackAudioCapture *)user_data;
 	if (pCapture->_callback)
 	{
-		pCapture->_callback(data, length, pCapture->_user_data);
+		pCapture->_callback(kCaptureData, data, length, pCapture->_user_data);
 	}
 }

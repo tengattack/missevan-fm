@@ -10,6 +10,7 @@
 #include <base/logging.h>
 #include <base/string/stringprintf.h>
 #include <base/windows_version.h>
+#include <base/debug/stack_trace.h>
 
 #include "base/common.h"
 #include "base/global.h"
@@ -19,6 +20,23 @@
 #include "UserAccount.h"
 #include "MissEvanFMWindow.h"
 #include "MainTray.h"
+
+LPTOP_LEVEL_EXCEPTION_FILTER g_previous_filter1 = NULL;
+
+long WINAPI ExpFilter(EXCEPTION_POINTERS* info)
+{
+	LOG(ERROR) << base::debug::StackTrace(info).ToString();
+	if (g_previous_filter1)
+		return g_previous_filter1(info);
+	return EXCEPTION_CONTINUE_SEARCH;
+}
+
+void EnableStackDumping()
+{
+	// RegisterApplicationRestart(L"", RESTART_NO_PATCH | RESTART_NO_REBOOT);
+	g_previous_filter1 = SetUnhandledExceptionFilter(ExpFilter);
+	base::debug::EnableInProcessStackDumping();
+}
 
 void LogSystemInfo()
 {
@@ -122,7 +140,6 @@ int WINAPI MissEvanFMMain(HINSTANCE hInstance)
 #elif defined(_DEBUG)
 int main()
 {
-	base::AtExitManager exit_manager;
 	HINSTANCE hInstance = GetModuleHandle(NULL);
 #else
 int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
@@ -131,6 +148,8 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 	_In_ int       nCmdShow)
 {
 #endif
+	EnableStackDumping();
+	base::AtExitManager exit_manager;
 	DEFER_INIT();
 
 	logging::LoggingSettings settings;

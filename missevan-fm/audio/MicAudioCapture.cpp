@@ -10,213 +10,8 @@
 
 bool DisableMMCSS = false;
 
-class CMMNotificationClient : public IMMNotificationClient
-{
-	LONG _cRef;
-	IMMDeviceEnumerator *_pEnumerator;
-
-	// Private function to print device-friendly name
-	HRESULT _PrintDeviceName(LPCWSTR  pwstrId);
-
-public:
-	CMMNotificationClient() :
-		_cRef(1),
-		_pEnumerator(NULL)
-	{
-	}
-
-	~CMMNotificationClient()
-	{
-		SafeRelease(&_pEnumerator);
-	}
-
-	// IUnknown methods -- AddRef, Release, and QueryInterface
-
-	ULONG STDMETHODCALLTYPE AddRef()
-	{
-		return InterlockedIncrement(&_cRef);
-	}
-
-	ULONG STDMETHODCALLTYPE Release()
-	{
-		ULONG ulRef = InterlockedDecrement(&_cRef);
-		if (0 == ulRef)
-		{
-			delete this;
-		}
-		return ulRef;
-	}
-
-	HRESULT STDMETHODCALLTYPE QueryInterface(
-		REFIID riid, VOID **ppvInterface)
-	{
-		if (IID_IUnknown == riid)
-		{
-			AddRef();
-			*ppvInterface = (IUnknown*)this;
-		}
-		else if (__uuidof(IMMNotificationClient) == riid)
-		{
-			AddRef();
-			*ppvInterface = (IMMNotificationClient*)this;
-		}
-		else
-		{
-			*ppvInterface = NULL;
-			return E_NOINTERFACE;
-		}
-		return S_OK;
-	}
-
-	// Callback methods for device-event notifications.
-
-	HRESULT STDMETHODCALLTYPE OnDefaultDeviceChanged(
-		EDataFlow flow, ERole role,
-		LPCWSTR pwstrDeviceId)
-	{
-		char  *pszFlow = "?????";
-		char  *pszRole = "?????";
-
-		_PrintDeviceName(pwstrDeviceId);
-
-		switch (flow)
-		{
-		case eRender:
-			pszFlow = "eRender";
-			break;
-		case eCapture:
-			pszFlow = "eCapture";
-			break;
-		}
-
-		switch (role)
-		{
-		case eConsole:
-			pszRole = "eConsole";
-			break;
-		case eMultimedia:
-			pszRole = "eMultimedia";
-			break;
-		case eCommunications:
-			pszRole = "eCommunications";
-			break;
-		}
-
-		printf("  -->New default device: flow = %s, role = %s\n",
-			pszFlow, pszRole);
-		return S_OK;
-	}
-
-	HRESULT STDMETHODCALLTYPE OnDeviceAdded(LPCWSTR pwstrDeviceId)
-	{
-		_PrintDeviceName(pwstrDeviceId);
-
-		printf("  -->Added device\n");
-		return S_OK;
-	};
-
-	HRESULT STDMETHODCALLTYPE OnDeviceRemoved(LPCWSTR pwstrDeviceId)
-	{
-		_PrintDeviceName(pwstrDeviceId);
-
-		printf("  -->Removed device\n");
-		return S_OK;
-	}
-
-	HRESULT STDMETHODCALLTYPE OnDeviceStateChanged(
-		LPCWSTR pwstrDeviceId,
-		DWORD dwNewState)
-	{
-		char  *pszState = "?????";
-
-		_PrintDeviceName(pwstrDeviceId);
-
-		switch (dwNewState)
-		{
-		case DEVICE_STATE_ACTIVE:
-			pszState = "ACTIVE";
-			break;
-		case DEVICE_STATE_DISABLED:
-			pszState = "DISABLED";
-			break;
-		case DEVICE_STATE_NOTPRESENT:
-			pszState = "NOTPRESENT";
-			break;
-		case DEVICE_STATE_UNPLUGGED:
-			pszState = "UNPLUGGED";
-			break;
-		}
-
-		printf("  -->New device state is DEVICE_STATE_%s (0x%8.8x)\n",
-			pszState, dwNewState);
-
-		return S_OK;
-	}
-
-	HRESULT STDMETHODCALLTYPE OnPropertyValueChanged(
-		LPCWSTR pwstrDeviceId,
-		const PROPERTYKEY key)
-	{
-		_PrintDeviceName(pwstrDeviceId);
-
-		printf("  -->Changed device property "
-			"{%8.8x-%4.4x-%4.4x-%2.2x%2.2x-%2.2x%2.2x%2.2x%2.2x%2.2x%2.2x}#%d\n",
-			key.fmtid.Data1, key.fmtid.Data2, key.fmtid.Data3,
-			key.fmtid.Data4[0], key.fmtid.Data4[1],
-			key.fmtid.Data4[2], key.fmtid.Data4[3],
-			key.fmtid.Data4[4], key.fmtid.Data4[5],
-			key.fmtid.Data4[6], key.fmtid.Data4[7],
-			key.pid);
-		return S_OK;
-	}
-};
-
-// Given an endpoint ID string, print the friendly device name.
-HRESULT CMMNotificationClient::_PrintDeviceName(LPCWSTR pwstrId)
-{
-	HRESULT hr = S_OK;
-	IMMDevice *pDevice = NULL;
-	IPropertyStore *pProps = NULL;
-	PROPVARIANT varString;
-
-	PropVariantInit(&varString);
-
-	if (_pEnumerator == NULL)
-	{
-		// Get enumerator for audio endpoint devices.
-		hr = CoCreateInstance(__uuidof(MMDeviceEnumerator),
-			NULL, CLSCTX_INPROC_SERVER,
-			__uuidof(IMMDeviceEnumerator),
-			(void**)&_pEnumerator);
-	}
-	if (hr == S_OK)
-	{
-		hr = _pEnumerator->GetDevice(pwstrId, &pDevice);
-	}
-	if (hr == S_OK)
-	{
-		hr = pDevice->OpenPropertyStore(STGM_READ, &pProps);
-	}
-	if (hr == S_OK)
-	{
-		// Get the endpoint device's friendly-name property.
-		hr = pProps->GetValue(PKEY_Device_FriendlyName, &varString);
-	}
-	wprintf(L"----------------------\nDevice name: \"%s\"\n"
-		L"  Endpoint ID string: \"%s\"\n",
-		(hr == S_OK) ? varString.pwszVal : L"null device",
-		(pwstrId != NULL) ? pwstrId : L"null ID");
-
-	PropVariantClear(&varString);
-
-	SafeRelease(&pProps);
-	SafeRelease(&pDevice);
-	return hr;
-}
-
 CMicAudioCapture::CMicAudioCapture(uint32 bufferLength)
 	: CAudioCapture(bufferLength)
-	, _RefCount(1)
 	, _Endpoint(NULL)
 	, _AudioClient(NULL)
 	, _CaptureClient(NULL)
@@ -224,18 +19,10 @@ CMicAudioCapture::CMicAudioCapture(uint32 bufferLength)
 	, _ShutdownEvent(NULL)
 	, _AudioSamplesReadyEvent(NULL)
 	, _CurrentCaptureIndex(0)
-	, _EnableStreamSwitch(false)
-	, _EndpointRole(eCommunications)
-	, _StreamSwitchEvent(NULL)
-	, _StreamSwitchCompleteEvent(NULL)
-	, _AudioSessionControl(NULL)
-	, _DeviceEnumerator(NULL)
-	, _InStreamSwitch(false)
 	, _EnableTransform(false)
 	, _stopped(false)
 {
 	memset(&_waveFormat, 0, sizeof(_waveFormat));
-	_notifyClient = new CMMNotificationClient();
 	//
 	//  configured latency in case we'll need it for a stream switch later.
 	//
@@ -286,7 +73,7 @@ bool CMicAudioCapture::InitializeAudioEngine()
 //
 bool CMicAudioCapture::Initialize(AudioFormat *format)
 {
-	CAudioCapture::_Initialize(format);
+	CAudioCapture::Initialize(format);
 
 	//
 	//  Create our shutdown and samples ready events- we want auto reset events that start in the not-signaled state.
@@ -302,18 +89,6 @@ bool CMicAudioCapture::Initialize(AudioFormat *format)
 	if (_AudioSamplesReadyEvent == NULL)
 	{
 		PLOG(ERROR) << "Unable to create samples ready event";
-		return false;
-	}
-
-	//
-	//  Create our stream switch event- we want auto reset events that start in the not-signaled state.
-	//  Note that we create this event even if we're not going to stream switch - that's because the event is used
-	//  in the main loop of the capturer and thus it has to be set.
-	//
-	_StreamSwitchEvent = CreateEventEx(NULL, NULL, 0, EVENT_MODIFY_STATE | SYNCHRONIZE);
-	if (_StreamSwitchEvent == NULL)
-	{
-		PLOG(ERROR) << "Unable to create stream switch event";
 		return false;
 	}
 
@@ -357,22 +132,13 @@ void CMicAudioCapture::Shutdown()
 		CloseHandle(_AudioSamplesReadyEvent);
 		_AudioSamplesReadyEvent = NULL;
 	}
-	if (_StreamSwitchEvent)
-	{
-		CloseHandle(_StreamSwitchEvent);
-		_StreamSwitchEvent = NULL;
-	}
 
 	SafeRelease(&_Endpoint);
 	SafeRelease(&_AudioClient);
 	SafeRelease(&_CaptureClient);
 
-	if (_EnableStreamSwitch)
-	{
-		TerminateStreamSwitch();
-	}
+	TerminateStreamSwitch();
 }
-
 
 //
 //  Start capturing...
@@ -464,22 +230,22 @@ bool CMicAudioCapture::Start()
 		return false;
 	}
 
-	if (_EnableStreamSwitch)
+	if (!InitializeStreamSwitch(_AudioClient, eCapture, eCommunications))
 	{
-		if (!InitializeStreamSwitch())
-		{
-			return false;
-		}
+		return false;
 	}
 
-	//
-	//  Now create the thread which is going to drive the capture.
-	//
-	_CaptureThread = CreateThread(NULL, 0, WASAPICaptureThread, this, 0, NULL);
 	if (_CaptureThread == NULL)
 	{
-		PLOG(ERROR) << "Unable to create transport thread";
-		return false;
+		//
+		//  Now create the thread which is going to drive the capture.
+		//
+		_CaptureThread = CreateThread(NULL, 0, WASAPICaptureThread, this, 0, NULL);
+		if (_CaptureThread == NULL)
+		{
+			PLOG(ERROR) << "Unable to create transport thread";
+			return false;
+		}
 	}
 
 	//
@@ -540,6 +306,21 @@ void CMicAudioCapture::Stop()
 	memset(&_waveFormat, 0, sizeof(_waveFormat));
 }
 
+bool CMicAudioCapture::HandleStreamSwitchEvent()
+{
+	SafeRelease(&_Endpoint);
+	SafeRelease(&_AudioClient);
+	SafeRelease(&_CaptureClient);
+
+	HRESULT hr = _DeviceEnumerator->GetDefaultAudioEndpoint(eCapture, eCommunications, &_Endpoint);
+	if (FAILED(hr))
+	{
+		PLOG(ERROR) << "Unable to retrieve default endpoint: " << boost::format("0x%08x") % hr;
+		return false;
+	}
+
+	return Start();
+}
 
 //
 //  Capture thread - processes samples from the audio engine
@@ -588,15 +369,24 @@ DWORD CMicAudioCapture::DoCaptureThread()
 									//  We need to stop the capturer, tear down the _AudioClient and _CaptureClient objects and re-create them on the new.
 									//  endpoint if possible.  If this fails, abort the thread.
 									//
-			/* if (!HandleStreamSwitchEvent())
+			if (!HandleStreamSwitchEvent())
 			{
-				stillPlaying = false;
-			} */
+				// stillPlaying = false;
+			}
+			else
+			{
+				_InStreamSwitch = false;
+			}
 			break;
 		case WAIT_OBJECT_0 + 2:     // _AudioSamplesReadyEvent
 									//
 									//  We need to retrieve the next buffer of samples from the audio capturer.
 									//
+			if (_CaptureClient == NULL)
+			{
+				break;
+			}
+
 			BYTE *pData;
 			UINT32 framesAvailable;
 			DWORD  flags;
@@ -610,13 +400,13 @@ DWORD CMicAudioCapture::DoCaptureThread()
 			{
 				if (hr != S_OK) {
 					// may AUDCLNT_S_BUFFER_EMPTY
-					continue;
+					break;
 				}
 				if (flags & AUDCLNT_BUFFERFLAGS_SILENT)
 				{
 					if (_callback) {
 						uint32 length = framesAvailable * _format.channels * _format.bits / 8;
-						_callback(NULL, length, _user_data);
+						_callback(kCaptureData, NULL, length, _user_data);
 					}
 				}
 				else if (_EnableTransform)
@@ -625,7 +415,7 @@ DWORD CMicAudioCapture::DoCaptureThread()
 				}
 				else if (_callback)
 				{
-					_callback(pData, framesAvailable * _format.channels * _format.bits / 8, _user_data);
+					_callback(kCaptureData, pData, framesAvailable * _format.channels * _format.bits / 8, _user_data);
 				}
 
 				hr = _CaptureClient->ReleaseBuffer(framesAvailable);
@@ -648,79 +438,11 @@ DWORD CMicAudioCapture::DoCaptureThread()
 	return 0;
 }
 
-
-//
-//  Initialize the stream switch logic.
-//
-bool CMicAudioCapture::InitializeStreamSwitch()
-{
-	HRESULT hr = _AudioClient->GetService(IID_PPV_ARGS(&_AudioSessionControl));
-	if (FAILED(hr))
-	{
-		PLOG(ERROR) << "Unable to retrieve session control: " << boost::format("0x%08x") % hr;
-		return false;
-	}
-
-	//
-	//  Create the stream switch complete event- we want a manual reset event that starts in the not-signaled state.
-	//
-	_StreamSwitchCompleteEvent = CreateEventEx(NULL, NULL, CREATE_EVENT_INITIAL_SET | CREATE_EVENT_MANUAL_RESET, EVENT_MODIFY_STATE | SYNCHRONIZE);
-	if (_StreamSwitchCompleteEvent == NULL)
-	{
-		PLOG(ERROR) << "Unable to create stream switch event";
-		return false;
-	}
-	//
-	//  Register for session and endpoint change notifications.  
-	//
-	//  A stream switch is initiated when we receive a session disconnect notification or we receive a default device changed notification.
-	//
-	/* hr = _AudioSessionControl->RegisterAudioSessionNotification(this);
-	if (FAILED(hr))
-	{
-		PLOG(ERROR) << "Unable to register for session notifications: " << boost::format("0x%08x") % hr;
-		return false;
-	}
-
-	hr = _DeviceEnumerator->RegisterEndpointNotificationCallback(this);
-	if (FAILED(hr))
-	{
-		PLOG(ERROR) << "Unable to register for endpoint notifications: " << boost::format("0x%08x") % hr;
-		return false;
-	} */
-
-	return true;
-}
-
-void CMicAudioCapture::TerminateStreamSwitch()
-{
-	/* HRESULT hr = _AudioSessionControl->UnregisterAudioSessionNotification(this);
-	if (FAILED(hr))
-	{
-		PLOG(ERROR) << "Unable to unregister for session notifications: " << boost::format("0x%08x") % hr;
-	}
-
-	_DeviceEnumerator->UnregisterEndpointNotificationCallback(this);
-	if (FAILED(hr))
-	{
-		PLOG(ERROR) << "Unable to unregister for endpoint notifications: " << boost::format("0x%08x") % hr;
-	} */
-
-	if (_StreamSwitchCompleteEvent)
-	{
-		CloseHandle(_StreamSwitchCompleteEvent);
-		_StreamSwitchCompleteEvent = NULL;
-	}
-
-	SafeRelease(&_AudioSessionControl);
-	SafeRelease(&_DeviceEnumerator);
-}
-
 void CMicAudioCapture::TransformProc(uint8 *data, ulong length, ulong samples, void *user_data)
 {
 	CMicAudioCapture *pCapture = (CMicAudioCapture *)user_data;
 	if (pCapture->_callback)
 	{
-		pCapture->_callback(data, length, pCapture->_user_data);
+		pCapture->_callback(kCaptureData, data, length, pCapture->_user_data);
 	}
 }

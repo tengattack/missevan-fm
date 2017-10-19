@@ -406,7 +406,7 @@ void LivePublisher::_CaptureProc(uint8 *data, ulong length, LivePublisherCapture
 	{
 		cap->slice.Write(data, length);
 
-		if (cap->type != kMicCapture) {
+		if (active_count > 1 && cap->type != kMicCapture) {
 			return;
 		}
 
@@ -469,9 +469,15 @@ void LivePublisher::_CaptureProc(uint8 *data, ulong length, LivePublisherCapture
 	}
 }
 
-void LivePublisher::CaptureProc(uint8 *data, ulong length, void *user_data)
+void LivePublisher::CaptureProc(AudioCaptureType type, uint8 *data, ulong length, void *user_data)
 {
 	LivePublisherCapture *cap = (LivePublisherCapture *)user_data;
+
+	if (type == kCaptureDisconnected) {
+		cap->active = false;
+		return;
+	}
+
 	bool alloc = false;
 	if (data == NULL) {
 		data = (uint8 *)malloc(length);

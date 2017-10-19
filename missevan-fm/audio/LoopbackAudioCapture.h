@@ -39,6 +39,10 @@ public:
 	void Shutdown();
 	bool Start();
 	void Stop();
+
+private:
+
+	bool HandleStreamSwitchEvent();
 };
 
 #endif

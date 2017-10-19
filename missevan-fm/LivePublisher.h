@@ -23,6 +23,7 @@
 class CAACEncoder;
 class CAudioCapture;
 class LivePublisher;
+enum AudioCaptureType;
 
 enum LivePublisherCaptureType {
 	kMicCapture = 0,
@@ -69,7 +70,7 @@ protected:
 	void _CaptureProc(uint8 *data, ulong length, LivePublisherCapture *cap);
 	void AudioMixer(ulong mixLength);
 
-	static void CALLBACK CaptureProc(uint8 *data, ulong length, void *user_data);
+	static void CALLBACK CaptureProc(AudioCaptureType type, uint8 *data, ulong length, void *user_data);
 	static void CALLBACK EncoderProc(uint8 *data, ulong length, ulong samples, void *user_data);
 	static DWORD CALLBACK MixerProc(LPVOID context);
 
