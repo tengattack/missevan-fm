@@ -127,8 +127,16 @@ void CLoopbackAudioCapture::Shutdown()
 
 bool CLoopbackAudioCapture::Start()
 {
+	HRESULT hr;
 	WAVEFORMATEX *mixFormat = NULL;
-	HRESULT hr = _ChatEndpoint->Activate(__uuidof(IAudioClient), CLSCTX_INPROC_SERVER, NULL, reinterpret_cast<void **>(&_AudioClient));
+
+	if (_EnableTransform) {
+		// disbale transformer for previous device
+		_Transform.Shutdown();
+		_EnableTransform = false;
+	}
+
+	hr = _ChatEndpoint->Activate(__uuidof(IAudioClient), CLSCTX_INPROC_SERVER, NULL, reinterpret_cast<void **>(&_AudioClient));
 	if (FAILED(hr))
 	{
 		PLOG(ERROR) << "Unable to activate audio client: " << boost::format("0x%08x") % hr;
@@ -296,6 +304,10 @@ void CLoopbackAudioCapture::Stop()
 
 bool CLoopbackAudioCapture::HandleStreamSwitchEvent()
 {
+	if (_AudioClient)
+	{
+		_AudioClient->Stop();
+	}
 	SafeRelease(&_ChatEndpoint);
 	SafeRelease(&_AudioClient);
 	SafeRelease(&_CaptureClient);

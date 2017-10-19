@@ -148,6 +148,12 @@ bool CMicAudioCapture::Start()
 	HRESULT hr;
 	WAVEFORMATEX *mixFormat = NULL;
 
+	if (_EnableTransform) {
+		// disbale transformer for previous device
+		_Transform.Shutdown();
+		_EnableTransform = false;
+	}
+
 	//
 	//  Now activate an IAudioClient object on our preferred endpoint and retrieve the mix format for that endpoint.
 	//
@@ -308,6 +314,10 @@ void CMicAudioCapture::Stop()
 
 bool CMicAudioCapture::HandleStreamSwitchEvent()
 {
+	if (_AudioClient)
+	{
+		_AudioClient->Stop();
+	}
 	SafeRelease(&_Endpoint);
 	SafeRelease(&_AudioClient);
 	SafeRelease(&_CaptureClient);
