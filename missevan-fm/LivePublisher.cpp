@@ -10,9 +10,9 @@
 #include "audio/MicAudioCapture.h"
 #include "audio/LoopbackAudioCapture.h"
 
-#define LPM_CREATE  WM_USER + 1
-#define LPM_DATA    WM_USER + 2
-#define LPM_QUIT    WM_QUIT
+#define LPM_CREATE       WM_USER + 1
+#define LPM_DATA         WM_USER + 2
+#define LPM_QUIT         WM_QUIT
 
 #define BUFFER_TIME 5000
 
@@ -529,6 +529,8 @@ DWORD LivePublisher::MixerProc(LPVOID context)
 	bool isStreaming = true;
 	MSG msg;
 	int sent;
+	int err_count = 0;
+	UINT_PTR idt_reconnect = NULL;
 
 	PeekMessage(&msg, NULL, WM_USER, WM_USER, PM_REMOVE);
 	publisher->m_mixer_event.Set();
@@ -543,6 +545,7 @@ DWORD LivePublisher::MixerProc(LPVOID context)
 				if (publisher->m_rtmp_ptr->SendAudioAACHeader(&publisher->m_format)) {
 					publisher->m_started = true;
 					publisher->m_start_time = GetTickCount();
+					err_count = 0;
 				} else {
 					LOG(ERROR) << "Send Audio AAC Header failed";
 				}
@@ -560,8 +563,47 @@ DWORD LivePublisher::MixerProc(LPVOID context)
 #endif
 			free(d->data);
 			free(d);
+			if (!sent && err_count == 0) {
+				// try to reconnect
+				// and wait for 3 seconds to reconnect
+				err_count = 1;
+				// If the function succeeds
+				idt_reconnect = SetTimer(NULL, NULL, 3000, NULL);
+				if (idt_reconnect == NULL) {
+					PLOG(ERROR) << "Create reconnect timer failed";
+				}
+			}
 			break;
 		}
+		case WM_TIMER:
+			// wParam: The timer identifier.
+			if (msg.wParam == idt_reconnect) {
+				LOG(INFO) << "RTMP reconnecting...";
+				if (publisher->m_rtmp_ptr->Start(publisher->m_push_url.c_str())) {
+					if (publisher->m_rtmp_ptr->SendAudioAACHeader(&publisher->m_format)) {
+						publisher->m_started = true;
+						publisher->m_start_time = GetTickCount();
+						err_count = 0;
+					} else {
+						LOG(ERROR) << "Send Audio AAC Header failed";
+					}
+				}
+
+				// free captured data if exists
+				while (PeekMessage(&msg, NULL, LPM_DATA, LPM_DATA, PM_REMOVE))
+				{
+					AACData *d = (AACData *)msg.lParam;
+					free(d->data);
+					free(d);
+				}
+
+				if (err_count == 0) {
+					KillTimer(NULL, idt_reconnect);
+				} else {
+					err_count++;
+				}
+			}
+			break;
 		case LPM_QUIT:
 			isStreaming = false;
 			break;
