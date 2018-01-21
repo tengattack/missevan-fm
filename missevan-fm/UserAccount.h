@@ -36,6 +36,7 @@ public:
 	void ClearCallback();
 
 	std::wstring GetUsername();
+	int64_t GetUserId();
 
 protected:
 

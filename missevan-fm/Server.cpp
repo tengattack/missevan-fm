@@ -5,6 +5,7 @@
 #include <base/logging.h>
 #include <base/file/file.h>
 #include <base/file/filedata.h>
+#include <base/string/utf_string_conversions.h>
 #include <common/Buffer.h>
 #include <common/strconv.h>
 #include <curl/curl.h>
@@ -167,6 +168,15 @@ const char *Server::GetActionText(SAction action)
 	return S_ACTION_TEXT[(int)action];
 }
 
+SProvider Server::ParseProvider(const std::string &provider)
+{
+	SProvider _provider = kProviderNetease;
+	if (provider == "agora") {
+		_provider = kProviderAgora;
+	}
+	return _provider;
+}
+
 // Define a callback to handle incoming messages
 void Server::onWebSocketMessage(Server* s, websocketpp::connection_hdl hdl, Server::WebSocketServer::message_ptr msg)
 {
@@ -243,11 +253,12 @@ void Server::onAction(const SAction action, Json::Value &value, websocketpp::con
 		supportFeatures.append("live");
 		supportFeatures.append("connect");
 		supportFeatures.append("player");
+		supportFeatures.append("agora");
 
 		ret_value["code"] = kSOk;
 		ret_value["action"] = GetActionText(action);
 		ret_value["status"] = stat;
-		ret_value["version"] = APP_VERSION;
+		ret_value["version"] = WideToUTF8(APP_VERSION);
 		ret_value["support"] = supportFeatures;
 		m_server.send(hdl, fs.write(ret_value), msg->get_opcode());
 		return;
@@ -261,6 +272,7 @@ void Server::onAction(const SAction action, Json::Value &value, websocketpp::con
 	if (room_op && !(stat & kStatUser)) {
 		ret_value["code"] = kSForbidden;
 		ret_value["action"] = GetActionText(action);
+		ret_value["status"] = stat;
 		ret_value["desp"] = "please login in first";
 		m_server.send(hdl, fs.write(ret_value), msg->get_opcode());
 		return;
@@ -293,7 +305,7 @@ void Server::onAction(const SAction action, Json::Value &value, websocketpp::con
 				ret_value["code"] = code;
 				ret_value["action"] = GetActionText(kActionLogin);
 				m_server.send(hdl, fs.write(ret_value), opcode);
-				if (code == 200) {
+				if (code == kSOk) {
 					m_handling_hdl = hdl;
 				}
 			});
@@ -336,21 +348,22 @@ void Server::onAction(const SAction action, Json::Value &value, websocketpp::con
 				m_player_ptr->Stop();
 			}
 
+			const std::string& room_name = value.get("room_name", "").asString();
+			SProvider provider = ParseProvider(value.get("provider", "").asString());
 			auto opcode = msg->get_opcode();
 			if (type == "live") {
-				bool bRet = m_publisher_ptr->Start(push_url);
+				bool bRet = m_publisher_ptr->Start(m_user_ptr->GetUserId(), room_id, room_name, push_url, provider);
 
 				Json::FastWriter fs;
 				Json::Value ret_value;
-				ret_value["code"] = bRet ? 200 : 500;
+				ret_value["code"] = bRet ? kSOk : kSInternalError;
 				ret_value["action"] = GetActionText(kActionStartPush);
 				m_server.send(hdl, fs.write(ret_value), opcode);
 			} else if (type == "connect") {
-				const std::string& room_name = value.get("room_name", "").asString();
 				if (room_name.empty()) {
 					params_error = true;
 				} else {
-					m_cm_ptr->CreateRoom(room_id, room_name, push_url, [this, hdl, opcode](int code) {
+					m_cm_ptr->CreateRoom(m_user_ptr->GetUserId(), room_id, room_name, push_url, provider, [this, hdl, opcode](int code) {
 						Json::FastWriter fs;
 						Json::Value ret_value;
 						ret_value["code"] = code;
@@ -371,8 +384,9 @@ void Server::onAction(const SAction action, Json::Value &value, websocketpp::con
 			if (stat & kStatPlayer) {
 				m_player_ptr->Stop();
 			}
+			SProvider provider = ParseProvider(value.get("provider", "").asString());
 			auto opcode = msg->get_opcode();
-			m_cm_ptr->JoinRoom(room_id, room_name, [this, hdl, opcode](int code) {
+			m_cm_ptr->JoinRoom(m_user_ptr->GetUserId(), room_id, room_name, provider, [this, hdl, opcode](int code) {
 				Json::FastWriter fs;
 				Json::Value ret_value;
 				ret_value["code"] = code;

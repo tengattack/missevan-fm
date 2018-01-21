@@ -25,6 +25,18 @@ class CAudioCapture;
 class LivePublisher;
 enum AudioCaptureType;
 
+enum SProvider {
+	kProviderNetease = 0,
+	kProviderAgora = 1,
+};
+
+namespace agora {
+	namespace rtc {
+		class IRtcEngine;
+	}
+}
+class AgoraEventHandler;
+
 enum LivePublisherCaptureType {
 	kMicCapture = 0,
 	kLoopbackCapture,
@@ -46,6 +58,9 @@ protected:
 	AudioFormat m_format;
 	uint32 m_start_time;
 	CAACEncoder *m_encoder;
+	agora::rtc::IRtcEngine *m_engine;
+	AgoraEventHandler *m_event_handler;
+	SProvider m_provider;
 	std::vector<LivePublisherCapture *> m_captures;
 	std::string m_push_url;
 	HANDLE m_mixer_thread;
@@ -66,6 +81,7 @@ protected:
 	LivePublisherCapture* GetCapture(LivePublisherCaptureType type);
 	int GetActiveCaptureCount();
 	uint32 GetBufferLength();
+	ulong GetInputSamples();
 
 	void _CaptureProc(uint8 *data, ulong length, LivePublisherCapture *cap);
 	void AudioMixer(ulong mixLength);
@@ -88,7 +104,7 @@ public:
 	bool IsLoopbackEnabled();
 	bool IsCopyMicLeftChannel();
 
-	bool Start(const std::string& push_url);
+	bool Start(int64_t user_id, uint32_t room_id, const std::string& room_name, const std::string& push_url, SProvider provider);
 	void Stop();
 	void Shutdown();
 

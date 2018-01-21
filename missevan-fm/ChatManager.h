@@ -6,9 +6,13 @@
 
 #include <string>
 
+#include <IAgoraRtcEngine.h>
+
+#include "LivePublisher.h"
+
 class DeviceManager;
 
-class ChatManager
+class ChatManager : public agora::rtc::IRtcEngineEventHandler
 {
 public:
 
@@ -34,9 +38,12 @@ public:
 		return m_stat;
 	};
 
-	void CreateRoom(uint32_t room_id, const std::string& room_name, const std::string& push_url, ChatCallback cb = NULL);
-	void JoinRoom(uint32_t room_id, const std::string& room_name, ChatCallback cb = NULL);
+	void CreateRoom(int64_t user_id, uint32_t room_id, const std::string& room_name, const std::string& push_url, SProvider provider, ChatCallback cb = NULL);
+	void JoinRoom(int64_t user_id, uint32_t room_id, const std::string& room_name, SProvider provider, ChatCallback cb = NULL);
 	void LeaveRoom();
+
+	bool IsBGMEnabled();
+	bool EnableBGM(bool bEnable, HWND hWnd);
 
 	void CallCallback(ChatCbType type, int code);
 	void ClearCallback();
@@ -51,7 +58,11 @@ protected:
 	std::string m_room_name;
 	std::string m_push_url;
 
+	agora::rtc::IRtcEngine *m_engine;
+	SProvider m_provider;
+
 	ChatCallback m_cb[kChatCbCount];
+	int setupAgoraEngine();
 
 	static DeviceManager *dm;
 	static ChatManager *chatManager;
@@ -65,6 +76,10 @@ protected:
 	static void onJoinRoomCb(ChatManager *cm, int code, __int64 channel_id, const std::string& json_extension);
 	static void onUserJoined(ChatManager *cm, __int64 channel_id, const std::string& json_extension);
 	static void onUserLeft(ChatManager *cm, __int64 channel_id, const std::string& json_extension);
+
+	// agora method
+	virtual void onJoinChannelSuccess(const char* channel, agora::rtc::uid_t uid, int elapsed);
+	virtual void onError(int err, const char* msg);
 };
 
 #endif

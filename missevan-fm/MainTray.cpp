@@ -1,13 +1,12 @@
 #include "StdAfx.h"
 #include "MainTray.h"
 
-#include <base/operation/fileselect.h>
-#include <common/strconv.h>
 #include "base/global.h"
 #include "ui/MainWindow.h"
 #include "ui/Menu.h"
 #include "Server.h"
 #include "UserAccount.h"
+#include "ChatManager.h"
 #include "DeviceManager.h"
 #include "LivePublisher.h"
 #include "MissEvanFMWindow.h"
@@ -195,15 +194,9 @@ LRESULT CMainTray::OnTrayMenu(UINT wParam, LONG lParam)
 				MessageBox(m_hWnd, L"无法开启系统背景音录制", L"错误", MB_ICONERROR | MB_OK);
 			}
 		} else if (stat & Server::kStatPushConnect) {
-			if (m_dm->IsAudioHooked()) {
-				m_dm->EndHookAudio();
-			} else {
-				MessageBox(m_hWnd, L"请选择一个程序，本程序将会把其所播放的音乐一并直播，例如网易云音乐。", L"提示", MB_ICONINFORMATION | MB_OK);
-					operation::CFileSelect fsel(m_hWnd, operation::kOpen, L"可执行文件(*.exe)|*.exe||", L"请选择一个程序");
-				if (fsel.Select()) {
-					CW2C w2c(fsel.GetPath().c_str());
-					m_dm->StartHookAudio(w2c.c_str());
-				}
+			bool enabled = m_server_ptr->m_cm_ptr->IsBGMEnabled();
+			if (!m_server_ptr->m_cm_ptr->EnableBGM(!enabled, m_hWnd)) {
+				MessageBox(m_hWnd, L"无法开启系统背景音录制", L"错误", MB_ICONERROR | MB_OK);
 			}
 		}
 	}

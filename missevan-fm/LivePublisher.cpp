@@ -4,8 +4,15 @@
 #include <base/logging.h>
 #include <base/string/stringprintf.h>
 #include <base/file/file.h>
+#include <base/json/values.h>
+#include <base/json/json_writer.h>
+
+#include <IAgoraRtcEngine.h>
+#include <IAgoraMediaEngine.h>
+
 #include "base/global.h"
 #include "base/config.h"
+#include "base/common.h"
 #include "audio/AACEncoder.h"
 #include "audio/MicAudioCapture.h"
 #include "audio/LoopbackAudioCapture.h"
@@ -20,9 +27,47 @@
 base::CFile file;
 #endif
 
+class AgoraEventHandler: public agora::rtc::IRtcEngineEventHandler
+{
+protected:
+	LivePublisher *m_publiser;
+
+public:
+	AgoraEventHandler(LivePublisher *publisher);
+	~AgoraEventHandler();
+
+	// agora method
+	virtual void onJoinChannelSuccess(const char* channel, agora::rtc::uid_t uid, int elapsed);
+	virtual void onError(int err, const char* msg);
+};
+
+AgoraEventHandler::AgoraEventHandler(LivePublisher *publisher)
+	: m_publiser(publisher)
+{
+}
+
+AgoraEventHandler::~AgoraEventHandler()
+{
+}
+
+void AgoraEventHandler::onJoinChannelSuccess(const char* channel, agora::rtc::uid_t uid, int elapsed)
+{
+	std::string str;
+	LOG(INFO) << base::SStringPrintf(&str, "Agora join channel success: %s, uid: %u, elapsed: %d", channel, uid, elapsed);
+}
+
+void AgoraEventHandler::onError(int err, const char* msg)
+{
+	std::string str;
+	LOG(ERROR) << base::SStringPrintf(&str, "Agora on error: %d %s", err, msg);
+}
+
 LivePublisher::LivePublisher()
 	: m_rtmp_ptr(NULL)
 	, m_encoder(NULL)
+	, m_engine(NULL)
+	, m_provider(kProviderNetease)
+	, m_event_handler(NULL)
 	, m_start_time(0)
 	, m_time(0)
 	, m_started(false)
@@ -54,7 +99,16 @@ LivePublisher::~LivePublisher()
 uint32 LivePublisher::GetBufferLength()
 {
 	// about 1s
-	return 48 * m_encoder->GetInputSamples() * m_format.bits / 8;
+	return 48 * GetInputSamples() * m_format.bits / 8;
+}
+
+ulong LivePublisher::GetInputSamples()
+{
+	if (m_provider == kProviderAgora) {
+		return 2048;
+	} else {
+		return m_encoder->GetInputSamples();
+	}
 }
 
 bool LivePublisher::IsStreaming()
@@ -123,19 +177,86 @@ int LivePublisher::GetActiveCaptureCount()
 	return active_count;
 }
 
-bool LivePublisher::Start(const std::string& push_url)
+bool LivePublisher::Start(int64_t user_id, uint32_t room_id, const std::string& room_name, const std::string& push_url, SProvider provider)
 {
 	LOG(INFO) << "Live Publisher starting...";
 
-	if (!m_encoder) {
-		m_encoder = new CAACEncoder();
-		if (!m_encoder->Initialize(&m_format, config::audio_bitrate * 1000)) {
-			LOG(ERROR) << "Unable to initialize aac encoder.";
+	m_provider = provider;
+
+	if (m_provider == kProviderAgora) {
+		int ret;
+		agora::rtc::RtcEngineContext ctx;
+		ctx.appId = AGORA_APP_ID;
+		// TODO: leaky memery
+		m_event_handler = new AgoraEventHandler(this);
+		ctx.eventHandler = m_event_handler;
+		m_engine = createAgoraRtcEngine();
+		ret = m_engine->initialize(ctx);
+		if (ret != 0) {
+			LOG(ERROR) << "Agora engine init failed! error: " << ret;
 			return false;
-		} else {
-			LOG(INFO) << "Initialize aac encoder " << config::audio_bitrate << "kbps";
 		}
-		m_encoder->RegisterCallback(EncoderProc, this);
+
+		m_engine->setChannelProfile(agora::rtc::CHANNEL_PROFILE_LIVE_BROADCASTING);
+		m_engine->setClientRole(agora::rtc::CLIENT_ROLE_BROADCASTER, NULL);
+		m_engine->disableVideo();
+
+		agora::rtc::RtcEngineParameters params(m_engine);
+		params.setHighQualityAudioParameters(true, true, true);
+		params.enableWebSdkInteroperability(true);
+		params.setAudioProfile(agora::rtc::AUDIO_PROFILE_MUSIC_HIGH_QUALITY_STEREO, agora::rtc::AUDIO_SCENARIO_DEFAULT);
+		params.setExternalAudioSource(true, m_format.sampleRate, m_format.channels);
+		params.setRecordingAudioFrameParameters(m_format.sampleRate, m_format.channels, agora::rtc::RAW_AUDIO_FRAME_OP_MODE_WRITE_ONLY, GetInputSamples());
+
+		agora::rtc::PublisherConfiguration config;
+		config.width = 10;
+		config.height = 10;
+		config.bitrate = 100;
+		config.rawStreamUrl = push_url.c_str();
+		config.publishUrl = push_url.c_str();
+
+		std::string publisher_info;
+		DictionaryValue *v = new DictionaryValue();
+		v->SetBoolean("owner", config.owner);
+		v->SetInteger("width", config.width);
+		v->SetInteger("height", config.height);
+		v->SetInteger("framerate", config.framerate);
+		v->SetInteger("bitrate", config.bitrate);
+		v->SetInteger("defaultLayout", config.defaultLayout);
+		v->SetInteger("lifecycle", config.lifecycle);
+		v->SetString("mosaicStream", config.publishUrl);
+		v->SetString("rawStream", config.rawStreamUrl);
+		v->SetString("extraInfo", config.extraInfo ? config.extraInfo : "");
+		v->SetBoolean("lowDelay", false);
+		v->SetInteger("audiosamplerate", m_format.sampleRate);
+		v->SetInteger("audiobitrate", config::audio_bitrate * 1000);
+		v->SetInteger("audiochannels", m_format.channels);
+		base::JSONWriter::Write(v, false, &publisher_info);
+		delete v;
+
+		// ret = m_engine->configPublisher(config);
+		// if (ret != 0) {
+		// 		LOG(ERROR) << "Agora engine config publisher failed! error code: " << ret;
+		// }
+		ret = m_engine->joinChannel(NULL, room_name.c_str(), publisher_info.c_str(), (agora::rtc::uid_t)user_id);
+		if (ret != 0) {
+	 		LOG(ERROR) << "Agora engine join channel failed! error: " << ret;
+		}
+	} else {
+		if (!m_encoder) {
+			m_encoder = new CAACEncoder();
+			if (!m_encoder->Initialize(&m_format, config::audio_bitrate * 1000)) {
+				LOG(ERROR) << "Unable to initialize aac encoder.";
+				return false;
+			} else {
+				LOG(INFO) << "Initialize aac encoder " << config::audio_bitrate << "kbps";
+			}
+			m_encoder->RegisterCallback(EncoderProc, this);
+		}
+
+		if (!m_rtmp_ptr) {
+			m_rtmp_ptr = new CRtmp();
+		}
 	}
 
 	LivePublisherCapture *cap = NewCapture(kMicCapture);
@@ -144,14 +265,11 @@ bool LivePublisher::Start(const std::string& push_url)
 	}
 	cap->capture->RegisterCallback(CaptureProc, cap);
 
-	if (!m_rtmp_ptr) {
-		m_rtmp_ptr = new CRtmp();
-	}
-
 	m_time = 0;
 	m_started = false;
 	m_start_send = false;
 	m_push_url = push_url;
+
 	m_mixer_event.Create(false, false);
 	m_mixer_thread = CreateThread(NULL, 0, MixerProc, this, 0, &m_mixer_threadid);
 	if (m_mixer_thread == NULL)
@@ -209,6 +327,15 @@ void LivePublisher::Stop()
 	}
 	if (m_rtmp_ptr) {
 		m_rtmp_ptr->Stop();
+	}
+	if (m_engine) {
+		m_engine->leaveChannel();
+		m_engine->release();
+		m_engine = NULL;
+	}
+	if (m_event_handler) {
+		delete m_event_handler;
+		m_event_handler = NULL;
 	}
 	m_time = 0;
 	m_start_time = 0;
@@ -440,7 +567,7 @@ void LivePublisher::_CaptureProc(uint8 *data, ulong length, LivePublisherCapture
 		}
 	}
 
-	ulong inputSamples = m_encoder->GetInputSamples();
+	ulong inputSamples = GetInputSamples();
 	ulong bufferSize = inputSamples * m_format.bits / 8;
 	ulong bytesPerSec = m_format.channels * m_format.sampleRate * m_format.bits / 8;
 	if (!m_start_send) {
@@ -450,14 +577,36 @@ void LivePublisher::_CaptureProc(uint8 *data, ulong length, LivePublisherCapture
 			return;
 		}
 	}
+
+	
 	if (m_buf.GetBufferLen() > bufferSize) {
 		int nbFrames = m_buf.GetBufferLen() / bufferSize;
 		if (nbFrames <= 0) {
 			return;
 		}
-		for (int i = 0; i < nbFrames; i++) {
-			m_encoder->Encode(m_buf.GetBuffer(i * bufferSize), inputSamples);
+
+		if (m_provider == kProviderAgora) {
+			agora::util::AutoPtr<agora::media::IMediaEngine> mediaEngine;
+			mediaEngine.queryInterface(m_engine, agora::rtc::AGORA_IID_MEDIA_ENGINE);
+			// if (mediaEngine.get() != NULL) {
+			// }
+			for (int i = 0; i < nbFrames; i++) {
+				agora::media::IAudioFrameObserver::AudioFrame frame;
+				frame.type = agora::media::IAudioFrameObserver::FRAME_TYPE_PCM16;
+				frame.channels = m_format.channels;
+				frame.bytesPerSample = bytesPerSec;
+				frame.samplesPerSec = m_format.sampleRate;
+				frame.samples = inputSamples / m_format.channels;
+				frame.buffer = m_buf.GetBuffer(i * bufferSize);
+				frame.renderTimeMs = m_time + i * bufferSize / bytesPerSec;
+				mediaEngine->pushAudioFrame(agora::media::AUDIO_RECORDING_SOURCE, &frame);
+			}
+		} else {
+			for (int i = 0; i < nbFrames; i++) {
+				m_encoder->Encode(m_buf.GetBuffer(i * bufferSize), inputSamples);
+			}
 		}
+
 		ulong remain = m_buf.GetBufferLen() % bufferSize;
 		if (remain > 0) {
 			m_buf.Slice(nbFrames * bufferSize);
@@ -539,19 +688,25 @@ DWORD LivePublisher::MixerProc(LPVOID context)
 		switch (msg.message)
 		{
 		case LPM_CREATE:
-			if (publisher->m_rtmp_ptr->Start(publisher->m_push_url.c_str())) {
-				if (publisher->m_rtmp_ptr->SendAudioAACHeader(&publisher->m_format)) {
-					publisher->m_started = true;
-					publisher->m_start_time = GetTickCount();
-				} else {
-					LOG(ERROR) << "Send Audio AAC Header failed";
+			if (publisher->m_provider == kProviderAgora) {
+				publisher->m_started = true;
+				publisher->m_start_time = GetTickCount();
+			} else {
+				if (publisher->m_rtmp_ptr->Start(publisher->m_push_url.c_str())) {
+					if (publisher->m_rtmp_ptr->SendAudioAACHeader(&publisher->m_format)) {
+						publisher->m_started = true;
+						publisher->m_start_time = GetTickCount();
+					} else {
+						LOG(ERROR) << "Send Audio AAC Header failed";
+					}
 				}
 			}
 			publisher->m_mixer_event.Set();
 			break;
 		case LPM_DATA: {
 			AACData *d = (AACData *)msg.lParam;
-			sent = publisher->m_rtmp_ptr->SendAudioAACData(d->data, d->length, d->timeoffset);
+			// sent = publisher->m_rtmp_ptr->SendAudioAACData(d->data, d->length, d->timeoffset);
+			sent = 0;
 #ifdef _DEBUG
 			std::string info;
 			base::SStringPrintf(&info, "timeoffset: %u sent: %d", d->timeoffset, sent);

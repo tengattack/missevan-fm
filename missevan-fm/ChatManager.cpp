@@ -1,9 +1,17 @@
 #include "stdafx.h"
 #include "ChatManager.h"
 
-#include <base/string/stringprintf.h>
 #include <base/logging.h>
+#include <base/json/values.h>
+#include <base/json/json_writer.h>
+#include <base/operation/fileselect.h>
+#include <base/string/stringprintf.h>
+#include <common/strconv.h>
+
+#include "base/common.h"
+#include "base/config.h"
 #include "DeviceManager.h"
+#include "Server.h"
 
 ChatManager *ChatManager::chatManager = NULL;
 DeviceManager *ChatManager::dm = NULL;
@@ -38,12 +46,18 @@ ChatManager::ChatManager()
 	: m_stat(kChatNone)
 	, m_mode(nim::kNIMVideoChatModeAudio)
 	, m_room_id(0)
+	, m_engine(NULL)
+	, m_provider(kProviderNetease)
 {
 	ClearCallback();
 }
 
 ChatManager::~ChatManager()
 {
+	if (m_engine) {
+		m_engine->release();
+		m_engine = NULL;
+	}
 }
 
 void ChatManager::FormatExtString(uint32_t room_id, std::string& ext_str)
@@ -156,6 +170,31 @@ void ChatManager::onUserLeft(ChatManager *cm, __int64 channel_id, const std::str
 
 }
 
+void ChatManager::onJoinChannelSuccess(const char* channel, agora::rtc::uid_t uid, int elapsed)
+{
+	std::string str;
+	LOG(INFO) << base::SStringPrintf(&str, "Agora join channel success: %s, uid: %u, elapsed: %d", channel, uid, elapsed);
+
+	switch (m_stat) {
+	case kChatOwnerConnecting:
+		m_stat = kChatOwner;
+		CallCallback(kChatCreateRoomCb, 200);
+		break;
+	case kChatUserConnecting:
+		m_stat = kChatUser;
+		CallCallback(kChatJoinRoomCb, 200);
+		break;
+	default:
+		DLOG_ASSERT("Unexpected chat stat");
+	}
+}
+
+void ChatManager::onError(int err, const char* msg)
+{
+	std::string str;
+	LOG(ERROR) << base::SStringPrintf(&str, "Agora on error: %d %s", err, msg);
+}
+
 void ChatManager::CallCallback(ChatCbType type, int code)
 {
 	if (m_cb[type]) {
@@ -171,50 +210,181 @@ void ChatManager::ClearCallback()
 	}
 }
 
-void ChatManager::CreateRoom(uint32_t room_id, const std::string& room_name, const std::string& push_url, ChatCallback cb)
+int ChatManager::setupAgoraEngine()
 {
-	nim::VChat::Opt2Callback _cb = std::bind(&onCreateRoomCb, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3);
-	m_stat = kChatOwnerConnecting;
+	int ret;
+	agora::rtc::RtcEngineContext ctx;
+	ctx.appId = AGORA_APP_ID;
+	ctx.eventHandler = this;
+	m_engine = createAgoraRtcEngine();
+	ret = m_engine->initialize(ctx);
+	if (ret != 0) {
+		return ret;
+	}
+
+	m_engine->setChannelProfile(agora::rtc::CHANNEL_PROFILE_LIVE_BROADCASTING);
+	m_engine->setClientRole(agora::rtc::CLIENT_ROLE_BROADCASTER, NULL);
+	m_engine->disableVideo();
+
+	agora::rtc::RtcEngineParameters params(m_engine);
+	params.setHighQualityAudioParameters(true, true, true);
+	params.enableWebSdkInteroperability(true);
+	params.setAudioProfile(agora::rtc::AUDIO_PROFILE_MUSIC_HIGH_QUALITY_STEREO, agora::rtc::AUDIO_SCENARIO_DEFAULT);
+	
+	return 0;
+}
+
+void ChatManager::CreateRoom(int64_t user_id, uint32_t room_id, const std::string& room_name, const std::string& push_url, SProvider provider, ChatCallback cb)
+{
+	m_provider = provider;
 	m_room_id = room_id;
 	m_room_name = room_name;
 	m_push_url = push_url;
+	m_stat = kChatOwnerConnecting;
 	m_cb[kChatCreateRoomCb] = cb;
-	
-	std::string ext_str;
-	FormatExtString(room_id, ext_str);
 
-	nim::VChat::CreateRoom(room_name, ext_str, "", _cb);
+	if (m_provider == kProviderAgora) {
+		int ret = setupAgoraEngine();
+		if (ret != 0) {
+			LOG(ERROR) << "Agora engine init failed! error: " << ret;
+			m_stat = kChatNone;
+			CallCallback(kChatCreateRoomCb, Server::kSInternalError);
+			return;
+		}
+
+		agora::rtc::PublisherConfiguration config;
+		config.width = 10;
+		config.height = 10;
+		config.bitrate = 100;
+		config.rawStreamUrl = push_url.c_str();
+		config.publishUrl = push_url.c_str();
+
+		std::string publisher_info;
+		DictionaryValue *v = new DictionaryValue();
+		v->SetBoolean("owner", config.owner);
+		v->SetInteger("width", config.width);
+		v->SetInteger("height", config.height);
+		v->SetInteger("framerate", config.framerate);
+		v->SetInteger("bitrate", config.bitrate);
+		v->SetInteger("defaultLayout", config.defaultLayout);
+		v->SetInteger("lifecycle", config.lifecycle);
+		v->SetString("mosaicStream", config.publishUrl);
+		v->SetString("rawStream", config.rawStreamUrl);
+		v->SetString("extraInfo", config.extraInfo ? config.extraInfo : "");
+		v->SetBoolean("lowDelay", false);
+		v->SetInteger("audiosamplerate", 48000);
+		v->SetInteger("audiobitrate", config::audio_bitrate * 1000);
+		v->SetInteger("audiochannels", 2);
+		base::JSONWriter::Write(v, false, &publisher_info);
+		delete v;
+
+		// ret = m_engine->configPublisher(config);
+		// if (ret != 0) {
+		// 		LOG(ERROR) << "Agora engine config publisher failed! error code: " << ret;
+		// }
+		ret = m_engine->joinChannel(NULL, room_name.c_str(), publisher_info.c_str(), (agora::rtc::uid_t)user_id);
+		if (ret != 0) {
+			LOG(ERROR) << "Agora engine join channel failed! error: " << ret;
+			m_stat = kChatNone;
+			CallCallback(kChatCreateRoomCb, Server::kSInternalError);
+			return;
+		}
+	} else {
+		nim::VChat::Opt2Callback _cb = std::bind(&onCreateRoomCb, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3);
+
+		std::string ext_str;
+		FormatExtString(room_id, ext_str);
+
+		nim::VChat::CreateRoom(room_name, ext_str, "", _cb);
+	}
 }
 
-void ChatManager::JoinRoom(uint32_t room_id, const std::string& room_name, ChatCallback cb)
+void ChatManager::JoinRoom(int64_t user_id, uint32_t room_id, const std::string& room_name, SProvider provider, ChatCallback cb)
 {
-	nim::VChat::Opt2Callback _cb = std::bind(&onJoinRoomCb, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3);
-	m_stat = kChatUserConnecting;
+	m_provider = provider;
 	m_room_id = room_id;
 	m_room_name = room_name;
 	m_push_url.clear();
+	m_stat = kChatUserConnecting;
 	m_cb[kChatJoinRoomCb] = cb;
 
-	Json::FastWriter fs;
-	Json::Value value;
-	value[nim::kNIMVChatBypassRtmp] = 1;
-	value[nim::kNIMVChatRtmpRecord] = 1;
-	value[nim::kNIMVChatAudioHighRate] = 1;
-	std::string json_value = fs.write(value);
+	if (m_provider == kProviderAgora) {
+		int ret = setupAgoraEngine();
+		if (ret != 0) {
+			LOG(ERROR) << "Agora engine init failed! error: " << ret;
+			m_stat = kChatNone;
+			CallCallback(kChatJoinRoomCb, Server::kSInternalError);
+			return;
+		}
+		ret = m_engine->joinChannel(NULL, room_name.c_str(), NULL, (agora::rtc::uid_t)user_id);
+		if (ret != 0) {
+			LOG(ERROR) << "Agora engine join channel failed! error: " << ret;
+			m_stat = kChatNone;
+			CallCallback(kChatJoinRoomCb, Server::kSInternalError);
+			return;
+		}
+	} else {
+		nim::VChat::Opt2Callback _cb = std::bind(&onJoinRoomCb, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3);
 
-	dm->StartAudioDevice();
-	nim::VChat::JoinRoom(m_mode, room_name, json_value, _cb);
+		Json::FastWriter fs;
+		Json::Value value;
+		value[nim::kNIMVChatBypassRtmp] = 1;
+		value[nim::kNIMVChatRtmpRecord] = 1;
+		value[nim::kNIMVChatAudioHighRate] = 1;
+		std::string json_value = fs.write(value);
+
+		dm->StartAudioDevice();
+		nim::VChat::JoinRoom(m_mode, room_name, json_value, _cb);
+	}
 }
 
 void ChatManager::LeaveRoom()
 {
 	ClearCallback();
+
+	if (m_provider == kProviderAgora) {
+		if (m_engine) {
+			m_engine->leaveChannel();
+			m_engine->release();
+			m_engine = NULL;
+		}
+	} else {
+		if (m_stat != kChatNone) {
+			nim::VChat::End("");
+			dm->EndAudioDevice();
+			m_stat = kChatNone;
+		}
+	}
+
 	m_room_id = 0;
 	m_room_name.clear();
 	m_push_url.clear();
-	if (m_stat != kChatNone) {
-		nim::VChat::End("");
-		dm->EndAudioDevice();
-		m_stat = kChatNone;
+}
+
+bool ChatManager::IsBGMEnabled()
+{
+	if (m_provider == kProviderAgora) {
+		return false;
+	} else {
+		return dm->IsAudioHooked();
+	}
+}
+
+bool ChatManager::EnableBGM(bool bEnable, HWND hWnd)
+{
+	if (m_provider == kProviderAgora) {
+		return false;
+	} else {
+		if (bEnable) {
+			MessageBox(hWnd, L"请选择一个程序，本程序将会把其所播放的音乐一并直播，例如网易云音乐。", L"提示", MB_ICONINFORMATION | MB_OK);
+			operation::CFileSelect fsel(hWnd, operation::kOpen, L"可执行文件(*.exe)|*.exe||", L"请选择一个程序");
+			if (fsel.Select()) {
+				CW2C w2c(fsel.GetPath().c_str());
+				dm->StartHookAudio(w2c.c_str());
+			}
+		} else {
+			dm->EndHookAudio();
+		}
+		return true;
 	}
 }

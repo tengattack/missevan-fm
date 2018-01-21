@@ -17,6 +17,7 @@ class DeviceManager;
 class LivePlayer;
 class LivePublisher;
 class CBuffer;
+enum SProvider;
 
 class Server
 {
@@ -99,6 +100,7 @@ protected:
 	static const char *S_ACTION_TEXT[];
 	static SAction ParseActionText(const std::string &action);
 	static const char *GetActionText(SAction action);
+	static SProvider ParseProvider(const std::string &provider);
 };
 
 #endif

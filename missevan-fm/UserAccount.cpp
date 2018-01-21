@@ -2,6 +2,7 @@
 #include "UserAccount.h"
 
 #include <base/logging.h>
+#include <base/string/string_number_conversions.h>
 #include <common/strconv.h>
 #include "base/common.h"
 
@@ -104,6 +105,13 @@ void UserAccount::Logout()
 		m_logged = kUserLogging;
 		nim::Client::Logout(nim::kNIMLogoutChangeAccout, std::bind(&OnLogoutCallback, this, std::placeholders::_1));
 	}
+}
+
+int64_t UserAccount::GetUserId()
+{
+	int64_t user_id = 0;
+	base::StringToInt64(m_userid, &user_id);
+	return user_id;
 }
 
 std::wstring UserAccount::GetUsername()
