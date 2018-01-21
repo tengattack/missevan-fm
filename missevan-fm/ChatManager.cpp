@@ -10,6 +10,7 @@
 
 #include <IAgoraMediaEngine.h>
 
+#include "base/global.h"
 #include "base/common.h"
 #include "base/config.h"
 #include "DeviceManager.h"
@@ -232,10 +233,15 @@ int ChatManager::setupAgoraEngine()
 	m_engine->disableVideo();
 
 	agora::rtc::RtcEngineParameters params(m_engine);
+	std::wstring log_path = global::log_path;
+	log_path += L"agora.log";
+	params.setLogFile(WideToUTF8(log_path).c_str());
+	// INFO | WARNING | ERROR | FATAL
+	params.setLogFilter(15);
 	params.setHighQualityAudioParameters(true, true, true);
 	params.enableWebSdkInteroperability(true);
 	params.setAudioProfile(agora::rtc::AUDIO_PROFILE_MUSIC_HIGH_QUALITY_STEREO, agora::rtc::AUDIO_SCENARIO_DEFAULT);
-	
+
 	return 0;
 }
 

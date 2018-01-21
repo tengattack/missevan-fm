@@ -20,6 +20,7 @@ namespace global {
 
 	extern std::wstring wpath;
 	extern std::string apath;
+	extern std::wstring log_path;
 
 	extern CMainWindow *mainWindow;
 }

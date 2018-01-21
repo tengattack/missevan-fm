@@ -3,6 +3,7 @@
 
 #include <base/logging.h>
 #include <base/string/stringprintf.h>
+#include <base/string/utf_string_conversions.h>
 #include <base/file/file.h>
 #include <base/json/values.h>
 #include <base/json/json_writer.h>
@@ -202,6 +203,11 @@ bool LivePublisher::Start(int64_t user_id, uint32_t room_id, const std::string& 
 		m_engine->disableVideo();
 
 		agora::rtc::RtcEngineParameters params(m_engine);
+		std::wstring log_path = global::log_path;
+		log_path += L"agora.log";
+		params.setLogFile(WideToUTF8(log_path).c_str());
+		// INFO | WARNING | ERROR | FATAL
+		params.setLogFilter(15);
 		params.setHighQualityAudioParameters(true, true, true);
 		params.enableWebSdkInteroperability(true);
 		params.setAudioProfile(agora::rtc::AUDIO_PROFILE_MUSIC_HIGH_QUALITY_STEREO, agora::rtc::AUDIO_SCENARIO_DEFAULT);
