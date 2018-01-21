@@ -45,6 +45,10 @@ public:
 	bool IsBGMEnabled();
 	bool EnableBGM(bool bEnable, HWND hWnd);
 
+	bool IsMicOpened();
+	void OpenMic();
+	void CloseMic();
+
 	void CallCallback(ChatCbType type, int code);
 	void ClearCallback();
 
@@ -60,6 +64,7 @@ protected:
 
 	agora::rtc::IRtcEngine *m_engine;
 	SProvider m_provider;
+	bool m_bgm;
 
 	ChatCallback m_cb[kChatCbCount];
 	int setupAgoraEngine();

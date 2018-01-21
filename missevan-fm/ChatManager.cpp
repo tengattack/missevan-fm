@@ -1,17 +1,21 @@
 #include "stdafx.h"
-#include "ChatManager.h"
 
 #include <base/logging.h>
 #include <base/json/values.h>
 #include <base/json/json_writer.h>
 #include <base/operation/fileselect.h>
 #include <base/string/stringprintf.h>
+#include <base/string/utf_string_conversions.h>
 #include <common/strconv.h>
+
+#include <IAgoraMediaEngine.h>
 
 #include "base/common.h"
 #include "base/config.h"
 #include "DeviceManager.h"
 #include "Server.h"
+
+#include "ChatManager.h"
 
 ChatManager *ChatManager::chatManager = NULL;
 DeviceManager *ChatManager::dm = NULL;
@@ -48,6 +52,7 @@ ChatManager::ChatManager()
 	, m_room_id(0)
 	, m_engine(NULL)
 	, m_provider(kProviderNetease)
+	, m_bgm(false)
 {
 	ClearCallback();
 }
@@ -178,11 +183,11 @@ void ChatManager::onJoinChannelSuccess(const char* channel, agora::rtc::uid_t ui
 	switch (m_stat) {
 	case kChatOwnerConnecting:
 		m_stat = kChatOwner;
-		CallCallback(kChatCreateRoomCb, 200);
+		CallCallback(kChatCreateRoomCb, Server::kSOk);
 		break;
 	case kChatUserConnecting:
 		m_stat = kChatUser;
-		CallCallback(kChatJoinRoomCb, 200);
+		CallCallback(kChatJoinRoomCb, Server::kSOk);
 		break;
 	default:
 		DLOG_ASSERT("Unexpected chat stat");
@@ -256,8 +261,8 @@ void ChatManager::CreateRoom(int64_t user_id, uint32_t room_id, const std::strin
 		config.width = 10;
 		config.height = 10;
 		config.bitrate = 100;
-		config.rawStreamUrl = push_url.c_str();
 		config.publishUrl = push_url.c_str();
+		// config.rawStreamUrl = push_url.c_str();
 
 		std::string publisher_info;
 		DictionaryValue *v = new DictionaryValue();
@@ -269,7 +274,7 @@ void ChatManager::CreateRoom(int64_t user_id, uint32_t room_id, const std::strin
 		v->SetInteger("defaultLayout", config.defaultLayout);
 		v->SetInteger("lifecycle", config.lifecycle);
 		v->SetString("mosaicStream", config.publishUrl);
-		v->SetString("rawStream", config.rawStreamUrl);
+		// v->SetString("rawStream", config.rawStreamUrl);
 		v->SetString("extraInfo", config.extraInfo ? config.extraInfo : "");
 		v->SetBoolean("lowDelay", false);
 		v->SetInteger("audiosamplerate", 48000);
@@ -316,6 +321,14 @@ void ChatManager::JoinRoom(int64_t user_id, uint32_t room_id, const std::string&
 			CallCallback(kChatJoinRoomCb, Server::kSInternalError);
 			return;
 		}
+
+		// agora::rtc::PublisherConfiguration config;
+		// config.width = 10;
+		// config.height = 10;
+		// config.bitrate = 100;
+		// config.owner = false;
+		// ret = m_engine->configPublisher(config);
+
 		ret = m_engine->joinChannel(NULL, room_name.c_str(), NULL, (agora::rtc::uid_t)user_id);
 		if (ret != 0) {
 			LOG(ERROR) << "Agora engine join channel failed! error: " << ret;
@@ -347,6 +360,7 @@ void ChatManager::LeaveRoom()
 			m_engine->leaveChannel();
 			m_engine->release();
 			m_engine = NULL;
+			m_bgm = false;
 		}
 	} else {
 		if (m_stat != kChatNone) {
@@ -361,10 +375,50 @@ void ChatManager::LeaveRoom()
 	m_push_url.clear();
 }
 
+bool ChatManager::IsMicOpened()
+{
+	if (m_provider == kProviderAgora) {
+		bool mute = false;
+		if (m_engine) {
+			agora::rtc::AAudioDeviceManager manger(m_engine);
+			manger->getRecordingDeviceMute(&mute);
+		}
+		return !mute;
+	} else {
+		return dm->IsMicOpened();
+	}
+}
+
+void ChatManager::OpenMic()
+{
+	if (m_provider == kProviderAgora) {
+		if (m_engine) {
+			agora::rtc::AAudioDeviceManager manger(m_engine);
+			manger->setRecordingDeviceMute(false);
+		}
+		return;
+	} else {
+		dm->OpenMic();
+	}
+}
+
+void ChatManager::CloseMic()
+{
+	if (m_provider == kProviderAgora) {
+		if (m_engine) {
+			agora::rtc::AAudioDeviceManager manger(m_engine);
+			manger->setRecordingDeviceMute(true);
+		}
+		return;
+	} else {
+		dm->CloseMic();
+	}
+}
+
 bool ChatManager::IsBGMEnabled()
 {
 	if (m_provider == kProviderAgora) {
-		return false;
+		return m_bgm;
 	} else {
 		return dm->IsAudioHooked();
 	}
@@ -373,14 +427,29 @@ bool ChatManager::IsBGMEnabled()
 bool ChatManager::EnableBGM(bool bEnable, HWND hWnd)
 {
 	if (m_provider == kProviderAgora) {
-		return false;
+		if (!m_engine) {
+			return true;
+		}
+		if (bEnable) {
+			MessageBox(hWnd, L"请选择一个音频文件，本程序将会将其作为伴奏一并直播。", L"提示", MB_ICONINFORMATION | MB_OK);
+			operation::CFileSelect fsel(hWnd, operation::kOpen, L"音频文件 (*.mp3)|*.mp3||", L"请选择一个音频文件");
+			if (fsel.Select()) {
+				agora::rtc::RtcEngineParameters params(m_engine);
+				m_bgm = params.startAudioMixing(WideToUTF8(fsel.GetPath()).c_str(), false, false, -1) == 0;
+				return m_bgm;
+			}
+		} else {
+			agora::rtc::RtcEngineParameters params(m_engine);
+			params.stopAudioMixing();
+			m_bgm = false;
+		}
+		return true;
 	} else {
 		if (bEnable) {
 			MessageBox(hWnd, L"请选择一个程序，本程序将会把其所播放的音乐一并直播，例如网易云音乐。", L"提示", MB_ICONINFORMATION | MB_OK);
-			operation::CFileSelect fsel(hWnd, operation::kOpen, L"可执行文件(*.exe)|*.exe||", L"请选择一个程序");
+			operation::CFileSelect fsel(hWnd, operation::kOpen, L"可执行文件 (*.exe)|*.exe||", L"请选择一个程序");
 			if (fsel.Select()) {
-				CW2C w2c(fsel.GetPath().c_str());
-				dm->StartHookAudio(w2c.c_str());
+				dm->StartHookAudio(WideToUTF8(fsel.GetPath()).c_str());
 			}
 		} else {
 			dm->EndHookAudio();

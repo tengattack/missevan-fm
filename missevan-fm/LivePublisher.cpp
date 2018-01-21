@@ -212,8 +212,8 @@ bool LivePublisher::Start(int64_t user_id, uint32_t room_id, const std::string& 
 		config.width = 10;
 		config.height = 10;
 		config.bitrate = 100;
-		config.rawStreamUrl = push_url.c_str();
 		config.publishUrl = push_url.c_str();
+		// config.rawStreamUrl = push_url.c_str();
 
 		std::string publisher_info;
 		DictionaryValue *v = new DictionaryValue();
@@ -225,7 +225,7 @@ bool LivePublisher::Start(int64_t user_id, uint32_t room_id, const std::string& 
 		v->SetInteger("defaultLayout", config.defaultLayout);
 		v->SetInteger("lifecycle", config.lifecycle);
 		v->SetString("mosaicStream", config.publishUrl);
-		v->SetString("rawStream", config.rawStreamUrl);
+		// v->SetString("rawStream", config.rawStreamUrl);
 		v->SetString("extraInfo", config.extraInfo ? config.extraInfo : "");
 		v->SetBoolean("lowDelay", false);
 		v->SetInteger("audiosamplerate", m_format.sampleRate);
@@ -705,12 +705,10 @@ DWORD LivePublisher::MixerProc(LPVOID context)
 			break;
 		case LPM_DATA: {
 			AACData *d = (AACData *)msg.lParam;
-			// sent = publisher->m_rtmp_ptr->SendAudioAACData(d->data, d->length, d->timeoffset);
-			sent = 0;
+			sent = publisher->m_rtmp_ptr->SendAudioAACData(d->data, d->length, d->timeoffset);
 #ifdef _DEBUG
 			std::string info;
-			base::SStringPrintf(&info, "timeoffset: %u sent: %d", d->timeoffset, sent);
-			VLOG(1) << info;
+			VLOG(1) << base::SStringPrintf(&info, "timeoffset: %u sent: %d", d->timeoffset, sent);
 			file.Write(d->data, d->length);
 #endif
 			free(d->data);

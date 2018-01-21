@@ -7,7 +7,6 @@
 #include "Server.h"
 #include "UserAccount.h"
 #include "ChatManager.h"
-#include "DeviceManager.h"
 #include "LivePublisher.h"
 #include "MissEvanFMWindow.h"
 
@@ -32,7 +31,6 @@ CMainTray::CMainTray()
 	: m_mainMenu(NULL)
 	, m_pushMenu(NULL)
 	, m_server_ptr(NULL)
-	, m_dm(NULL)
 {
 }
 
@@ -87,7 +85,6 @@ BOOL CMainTray::Create(HWND hWnd, UINT uCallbackMessage, LPCTSTR szTip, HICON ic
 void CMainTray::SetServer(Server *p_server)
 {
 	m_server_ptr = p_server;
-	m_dm = DeviceManager::GetInstance();
 }
 
 void CMainTray::UpdateMenu()
@@ -121,13 +118,13 @@ void CMainTray::UpdateMenu()
 				m_pushMenu->EnableItem(kTMTAudioMic, false, false);
 				m_pushMenu->EnableItem(kTMTAudioCopyMicLeftChannel, true, false);
 			} else {
-				if (m_dm->IsMicOpened()) {
+				if (m_server_ptr->m_cm_ptr->IsMicOpened()) {
 					m_pushMenu->Modify(kTMTAudioMic, L"关闭麦克风");
 				}
 				else {
 					m_pushMenu->Modify(kTMTAudioMic, L"打开麦克风");
 				}
-				if (m_dm->IsAudioHooked()) {
+				if (m_server_ptr->m_cm_ptr->IsBGMEnabled()) {
 					m_pushMenu->Modify(kTMTAudioHook, L"关闭背景乐");
 				} else {
 					m_pushMenu->Modify(kTMTAudioHook, L"设置背景乐");
@@ -174,10 +171,10 @@ LRESULT CMainTray::OnTrayMenu(UINT wParam, LONG lParam)
 	case kTMTAudioMic: {
 		uint32_t stat = m_server_ptr->GetStat();
 		if (stat & Server::kStatPushConnect) {
-			if (m_dm->IsMicOpened()) {
-				m_dm->CloseMic();
+			if (m_server_ptr->m_cm_ptr->IsMicOpened()) {
+				m_server_ptr->m_cm_ptr->CloseMic();
 			} else {
-				m_dm->OpenMic();
+				m_server_ptr->m_cm_ptr->OpenMic();
 			}
 		}
 	}

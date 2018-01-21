@@ -4,7 +4,6 @@
 
 class CMenu;
 class Server;
-class DeviceManager;
 
 class CMainTray : public CTrayIcon
 {
@@ -23,7 +22,6 @@ protected:
 	CMenu *m_mainMenu;
 	CMenu *m_pushMenu;
 	Server *m_server_ptr;
-	DeviceManager *m_dm;
 
 	void UpdateMenu();
 };
