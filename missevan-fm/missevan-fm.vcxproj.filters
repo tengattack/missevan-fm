@@ -146,12 +146,6 @@
     <ClCompile Include="MainTray.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\sdks\tengattack\cuteui\base\base_util.cc">
-      <Filter>base</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\sdks\tengattack\common\common_util.cc">
-      <Filter>base</Filter>
-    </ClCompile>
     <ClCompile Include="base\UpdateInfo.cc">
       <Filter>base</Filter>
     </ClCompile>
@@ -184,6 +178,12 @@
     </ClCompile>
     <ClCompile Include="base\config.cpp">
       <Filter>base</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\sdks\fr\common\common_util.cc">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\sdks\fr\cuteui\base\base_util.cc">
+      <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

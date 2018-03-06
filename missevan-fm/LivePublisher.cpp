@@ -20,6 +20,11 @@
 base::CFile file;
 #endif
 
+inline ulong min(ulong a, ulong b)
+{
+	return a < b ? a : b;
+}
+
 LivePublisher::LivePublisher()
 	: m_rtmp_ptr(NULL)
 	, m_encoder(NULL)
@@ -426,7 +431,7 @@ void LivePublisher::_CaptureProc(uint8 *data, ulong length, LivePublisherCapture
 				}
 				else
 				{
-					minBufferSize = std::min((ulong)cap_->slice.GetBufferLen(), minBufferSize);
+					minBufferSize = min((ulong)cap_->slice.GetBufferLen(), minBufferSize);
 				}
 			}
 		}
