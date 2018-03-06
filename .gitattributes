@@ -1,0 +1,5 @@
+.git* text eol=lf
+.cpp text eol=lf
+.cc text eol=lf
+.h text eol=lf
+

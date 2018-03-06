@@ -38,8 +38,8 @@
     <ClCompile Include="MissEvanFMLoader.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\sdks\tengattack\cuteui\base\base_util.cc">
-      <Filter>base</Filter>
+    <ClCompile Include="..\..\sdks\fr\cuteui\base\base_util.cc">
+      <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

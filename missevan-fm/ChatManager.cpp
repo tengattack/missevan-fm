@@ -229,7 +229,7 @@ int ChatManager::setupAgoraEngine()
 	}
 
 	m_engine->setChannelProfile(agora::rtc::CHANNEL_PROFILE_LIVE_BROADCASTING);
-	m_engine->setClientRole(agora::rtc::CLIENT_ROLE_BROADCASTER, NULL);
+	m_engine->setClientRole(agora::rtc::CLIENT_ROLE_BROADCASTER);
 	m_engine->disableVideo();
 
 	agora::rtc::RtcEngineParameters params(m_engine);
