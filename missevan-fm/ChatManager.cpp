@@ -17,6 +17,7 @@
 #include "Server.h"
 
 #include "ChatManager.h"
+#include "UserAccount.h"
 
 ChatManager *ChatManager::chatManager = NULL;
 DeviceManager *ChatManager::dm = NULL;
@@ -199,6 +200,16 @@ void ChatManager::onError(int err, const char* msg)
 {
 	std::string str;
 	LOG(ERROR) << base::SStringPrintf(&str, "Agora on error: %d %s", err, msg);
+	switch (m_stat) {
+	case kChatOwnerConnecting:
+		CallCallback(kChatCreateRoomCb, Server::kSInternalError);
+		m_stat = kChatNone;
+		break;
+	case kChatUserConnecting:
+		CallCallback(kChatJoinRoomCb, Server::kSInternalError);
+		m_stat = kChatNone;
+		break;
+	}
 }
 
 void ChatManager::CallCallback(ChatCbType type, int code)
@@ -236,6 +247,7 @@ int ChatManager::setupAgoraEngine()
 	std::wstring log_path = global::log_path;
 	log_path += L"agora.log";
 	params.setLogFile(WideToUTF8(log_path).c_str());
+	std::cout << "path is: " << WideToUTF8(log_path).c_str();
 	// INFO | WARNING | ERROR | FATAL
 	params.setLogFilter(15);
 	params.setHighQualityAudioParameters(true, true, true);
@@ -293,7 +305,8 @@ void ChatManager::CreateRoom(int64_t user_id, uint32_t room_id, const std::strin
 		// if (ret != 0) {
 		// 		LOG(ERROR) << "Agora engine config publisher failed! error code: " << ret;
 		// }
-		ret = m_engine->joinChannel(NULL, room_name.c_str(), publisher_info.c_str(), (agora::rtc::uid_t)user_id);
+		agora::rtc::uid_t agoraUserId = UserAccount::GetInstance()->GetAgoraUserId();
+		ret = m_engine->joinChannel("", room_name.c_str(), publisher_info.c_str(), agoraUserId);
 		if (ret != 0) {
 			LOG(ERROR) << "Agora engine join channel failed! error: " << ret;
 			m_stat = kChatNone;

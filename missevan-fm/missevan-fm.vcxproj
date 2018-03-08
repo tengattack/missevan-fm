@@ -290,7 +290,6 @@
     <Text Include="ReadMe.txt" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="audio\AACEncoder.h" />
     <ClInclude Include="audio\AudioCapture.h" />
     <ClInclude Include="audio\AudioTransform.h" />
     <ClInclude Include="audio\common.h" />
@@ -299,7 +298,6 @@
     <ClInclude Include="base\common.h" />
     <ClInclude Include="base\config.h" />
     <ClInclude Include="base\global.h" />
-    <ClInclude Include="base\Rtmp.h" />
     <ClInclude Include="base\SliceBuffer.h" />
     <ClInclude Include="base\types.h" />
     <ClInclude Include="base\UpdateInfo.h" />
@@ -321,14 +319,12 @@
   <ItemGroup>
     <ClCompile Include="..\..\sdks\fr\common\common_util.cc" />
     <ClCompile Include="..\..\sdks\fr\cuteui\base\base_util.cc" />
-    <ClCompile Include="audio\AACEncoder.cpp" />
     <ClCompile Include="audio\AudioCapture.cpp" />
     <ClCompile Include="audio\AudioTransform.cpp" />
     <ClCompile Include="audio\LoopbackAudioCapture.cpp" />
     <ClCompile Include="audio\MicAudioCapture.cpp" />
     <ClCompile Include="base\config.cpp" />
     <ClCompile Include="base\global.cpp" />
-    <ClCompile Include="base\Rtmp.cpp" />
     <ClCompile Include="base\SliceBuffer.cpp" />
     <ClCompile Include="base\UpdateInfo.cc" />
     <ClCompile Include="ChatManager.cpp" />

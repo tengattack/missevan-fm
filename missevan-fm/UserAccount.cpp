@@ -114,6 +114,12 @@ int64_t UserAccount::GetUserId()
 	return user_id;
 }
 
+int64_t UserAccount::GetAgoraUserId()
+{
+	// user_id * 10 + x £¨ÕâÀï x Îª 4£©
+	return GetUserId() * 10 + 4;
+}
+
 std::wstring UserAccount::GetUsername()
 {
 	CUTF82W u2w(m_username.c_str());

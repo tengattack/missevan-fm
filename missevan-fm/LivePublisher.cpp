@@ -14,9 +14,11 @@
 #include "base/global.h"
 #include "base/config.h"
 #include "base/common.h"
-#include "audio/AACEncoder.h"
+//#include "audio/AACEncoder.h"
 #include "audio/MicAudioCapture.h"
 #include "audio/LoopbackAudioCapture.h"
+
+#include "UserAccount.h"
 
 #define LPM_CREATE       WM_USER + 1
 #define LPM_DATA         WM_USER + 2
@@ -45,6 +47,8 @@ public:
 	// agora method
 	virtual void onJoinChannelSuccess(const char* channel, agora::rtc::uid_t uid, int elapsed);
 	virtual void onError(int err, const char* msg);
+
+	LivePublisher::ChatCallback			m_callback;
 };
 
 AgoraEventHandler::AgoraEventHandler(LivePublisher *publisher)
@@ -60,17 +64,18 @@ void AgoraEventHandler::onJoinChannelSuccess(const char* channel, agora::rtc::ui
 {
 	std::string str;
 	LOG(INFO) << base::SStringPrintf(&str, "Agora join channel success: %s, uid: %u, elapsed: %d", channel, uid, elapsed);
+	m_callback(0);
 }
 
 void AgoraEventHandler::onError(int err, const char* msg)
 {
 	std::string str;
 	LOG(ERROR) << base::SStringPrintf(&str, "Agora on error: %d %s", err, msg);
+	m_callback(err);
 }
 
 LivePublisher::LivePublisher()
-	: m_rtmp_ptr(NULL)
-	, m_encoder(NULL)
+	: m_encoder(NULL)
 	, m_engine(NULL)
 	, m_provider(kProviderNetease)
 	, m_event_handler(NULL)
@@ -112,8 +117,9 @@ ulong LivePublisher::GetInputSamples()
 {
 	if (m_provider == kProviderAgora) {
 		return 2048;
-	} else {
-		return m_encoder->GetInputSamples();
+	}
+	else {
+		return 2048;// 原先是 CAACEncoder 的代码
 	}
 }
 
@@ -162,7 +168,7 @@ LivePublisherCapture* LivePublisher::NewCapture(LivePublisherCaptureType type)
 
 LivePublisherCapture* LivePublisher::GetCapture(LivePublisherCaptureType type)
 {
-	for (int i = 0; i < m_captures.size(); i++)
+	for (size_t i = 0; i < m_captures.size(); i++)
 	{
 		if (m_captures[i]->type == type) {
 			return m_captures[i];
@@ -183,11 +189,12 @@ int LivePublisher::GetActiveCaptureCount()
 	return active_count;
 }
 
-bool LivePublisher::Start(int64_t user_id, uint32_t room_id, const std::string& room_name, const std::string& push_url, SProvider provider)
+bool LivePublisher::Start(int64_t user_id, uint32_t room_id, const std::string& room_name, const std::string& push_url, SProvider provider,
+	ChatCallback callback)
 {
 	LOG(INFO) << "Live Publisher starting...";
 
-	m_provider = provider;
+	m_provider = kProviderAgora;// 强制使用 Agora
 
 	if (m_provider == kProviderAgora) {
 		int ret;
@@ -195,11 +202,13 @@ bool LivePublisher::Start(int64_t user_id, uint32_t room_id, const std::string& 
 		ctx.appId = AGORA_APP_ID;
 		// TODO: leaky memery
 		m_event_handler = new AgoraEventHandler(this);
+		m_event_handler->m_callback = callback;
 		ctx.eventHandler = m_event_handler;
 		m_engine = createAgoraRtcEngine();
 		ret = m_engine->initialize(ctx);
 		if (ret != 0) {
 			LOG(ERROR) << "Agora engine init failed! error: " << ret;
+			callback(ret);
 			return false;
 		}
 
@@ -249,25 +258,13 @@ bool LivePublisher::Start(int64_t user_id, uint32_t room_id, const std::string& 
 		// if (ret != 0) {
 		// 		LOG(ERROR) << "Agora engine config publisher failed! error code: " << ret;
 		// }
-		ret = m_engine->joinChannel(NULL, room_name.c_str(), publisher_info.c_str(), (agora::rtc::uid_t)user_id);
+		agora::rtc::uid_t agoraUserId = UserAccount::GetInstance()->GetAgoraUserId();
+		ret = m_engine->joinChannel("", room_name.c_str(), publisher_info.c_str(), agoraUserId);
 		if (ret != 0) {
 	 		LOG(ERROR) << "Agora engine join channel failed! error: " << ret;
 		}
 	} else {
-		if (!m_encoder) {
-			m_encoder = new CAACEncoder();
-			if (!m_encoder->Initialize(&m_format, config::audio_bitrate * 1000)) {
-				LOG(ERROR) << "Unable to initialize aac encoder.";
-				return false;
-			} else {
-				LOG(INFO) << "Initialize aac encoder " << config::audio_bitrate << "kbps";
-			}
-			m_encoder->RegisterCallback(EncoderProc, this);
-		}
-
-		if (!m_rtmp_ptr) {
-			m_rtmp_ptr = new CRtmp();
-		}
+		// 原先是 CAACEncoder 的代码
 	}
 
 	LivePublisherCapture *cap = NewCapture(kMicCapture);
@@ -286,6 +283,7 @@ bool LivePublisher::Start(int64_t user_id, uint32_t room_id, const std::string& 
 	if (m_mixer_thread == NULL)
 	{
 		LOG(ERROR) << "Unable to create transport thread.";
+		callback(-1);
 		return false;
 	}
 	m_mixer_event.Wait();
@@ -294,7 +292,8 @@ bool LivePublisher::Start(int64_t user_id, uint32_t room_id, const std::string& 
 	m_mixer_event.Wait();
 
 	if (!m_started) {
-		LOG(ERROR) << "Unable to start rtmp.";
+		LOG(ERROR) << "Unable to start.";
+		callback(-1);
 		return false;
 	}
 
@@ -309,6 +308,7 @@ bool LivePublisher::Start(int64_t user_id, uint32_t room_id, const std::string& 
 	if (!cap->capture->Start()) {
 		LOG(ERROR) << "Unable to start mic capture.";
 		Stop();
+		callback(-1);
 		return false;
 	}
 
@@ -321,7 +321,7 @@ void LivePublisher::Stop()
 	{
 		LOG(INFO) << "Live Publisher stopping...";
 	}
-	for (int i = 0; i < m_captures.size(); i++)
+	for (size_t i = 0; i < m_captures.size(); i++)
 	{
 		m_captures[i]->capture->Stop();
 		m_captures[i]->active = false;
@@ -335,9 +335,6 @@ void LivePublisher::Stop()
 		CloseHandle(m_mixer_thread);
 		m_mixer_thread = NULL;
 		m_mixer_threadid = 0;
-	}
-	if (m_rtmp_ptr) {
-		m_rtmp_ptr->Stop();
 	}
 	if (m_engine) {
 		m_engine->leaveChannel();
@@ -362,23 +359,13 @@ void LivePublisher::Shutdown()
 {
 	Stop();
 
-	for (int i = 0; i < m_captures.size(); i++)
+	for (size_t i = 0; i < m_captures.size(); i++)
 	{
 		m_captures[i]->capture->Shutdown();
 		delete m_captures[i]->capture;
 		delete m_captures[i];
 	}
 	m_captures.clear();
-
-	if (m_encoder) {
-		m_encoder->Shutdown();
-		delete m_encoder;
-	}
-	if (m_rtmp_ptr) {
-		m_rtmp_ptr->Shutdown();
-		delete m_rtmp_ptr;
-		m_rtmp_ptr = NULL;
-	}
 }
 
 bool LivePublisher::EnableLookbackCapture(bool bEnable)
@@ -427,9 +414,9 @@ bool LivePublisher::EnableCopyMicLeftChannel(bool bEnable)
 
 void LivePublisher::AudioMixer(ulong mixLength)
 {
-	int num = 0;
+	size_t num = 0;
 
-	int i, j;
+	size_t i, j;
 	LivePublisherCapture *cap_ = NULL;
 	for (i = 0; i < m_captures.size(); i++)
 	{
@@ -454,7 +441,7 @@ void LivePublisher::AudioMixer(ulong mixLength)
 	}
 
 	ulong samples = mixLength / (m_format.bits / 8);
-	double result;
+	int16 result;
 	for (i = 0; i < samples; i++)
 	{
 		// assume all 16 bits
@@ -552,7 +539,7 @@ void LivePublisher::_CaptureProc(uint8 *data, ulong length, LivePublisherCapture
 		bool gotFirstSize = false;
 		ulong minBufferSize = 0;
 
-		for (int i = 0; i < m_captures.size(); i++)
+		for (size_t i = 0; i < m_captures.size(); i++)
 		{
 			cap_ = m_captures[i];
 			if (cap_->slice.GetBufferLen()) {
@@ -613,9 +600,7 @@ void LivePublisher::_CaptureProc(uint8 *data, ulong length, LivePublisherCapture
 				mediaEngine->pushAudioFrame(agora::media::AUDIO_RECORDING_SOURCE, &frame);
 			}
 		} else {
-			for (int i = 0; i < nbFrames; i++) {
-				m_encoder->Encode(m_buf.GetBuffer(i * bufferSize), inputSamples);
-			}
+			// 原先是 CAACEncoder 的代码
 		}
 
 		ulong remain = m_buf.GetBufferLen() % bufferSize;
@@ -688,7 +673,7 @@ DWORD LivePublisher::MixerProc(LPVOID context)
 	LivePublisher *publisher = (LivePublisher *)context;
 	bool isStreaming = true;
 	MSG msg;
-	int sent;
+	int sent = 0;
 	int err_count = 0;
 	UINT_PTR idt_reconnect = NULL;
 
@@ -705,20 +690,13 @@ DWORD LivePublisher::MixerProc(LPVOID context)
 				publisher->m_started = true;
 				publisher->m_start_time = GetTickCount();
 			} else {
-				if (publisher->m_rtmp_ptr->Start(publisher->m_push_url.c_str())) {
-					if (publisher->m_rtmp_ptr->SendAudioAACHeader(&publisher->m_format)) {
-						publisher->m_started = true;
-						publisher->m_start_time = GetTickCount();
-					} else {
-						LOG(ERROR) << "Send Audio AAC Header failed";
-					}
-				}
+				// 原先是 rtmp 的部分
 			}
 			publisher->m_mixer_event.Set();
 			break;
 		case LPM_DATA: {
 			AACData *d = (AACData *)msg.lParam;
-			sent = publisher->m_rtmp_ptr->SendAudioAACData(d->data, d->length, d->timeoffset);
+			// 原先是 rtmp 的部分
 #ifdef _DEBUG
 			std::string info;
 			VLOG(1) << base::SStringPrintf(&info, "timeoffset: %u sent: %d", d->timeoffset, sent);
@@ -745,15 +723,7 @@ DWORD LivePublisher::MixerProc(LPVOID context)
 			// wParam: The timer identifier.
 			if (msg.wParam == idt_reconnect) {
 				LOG(INFO) << "RTMP reconnecting...";
-				if (publisher->m_rtmp_ptr->Start(publisher->m_push_url.c_str())) {
-					if (publisher->m_rtmp_ptr->SendAudioAACHeader(&publisher->m_format)) {
-						publisher->m_started = true;
-						publisher->m_start_time = GetTickCount();
-						err_count = 0;
-					} else {
-						LOG(ERROR) << "Send Audio AAC Header failed";
-					}
-				}
+				// 原先是 rtmp 的部分
 
 				// free captured data if exists
 				while (PeekMessage(&msg, NULL, LPM_DATA, LPM_DATA, PM_REMOVE))
