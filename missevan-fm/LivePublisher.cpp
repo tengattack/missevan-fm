@@ -71,7 +71,12 @@ void AgoraEventHandler::onError(int err, const char* msg)
 {
 	std::string str;
 	LOG(ERROR) << base::SStringPrintf(&str, "Agora on error: %d %s", err, msg);
-	m_callback(Server::kSInternalError);
+	static bool runOnce = true;
+	if (runOnce)
+	{
+		m_callback(Server::kSInternalError);
+		runOnce = false;
+	}
 }
 
 LivePublisher::LivePublisher()
