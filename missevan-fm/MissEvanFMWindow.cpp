@@ -14,6 +14,8 @@
 #include "ui/TrayIcon.h"
 #include "Server.h"
 
+#include <vld.h>
+
 #define AUTOUPDATE_TIMERID 1001
 
 struct ProcessInfo

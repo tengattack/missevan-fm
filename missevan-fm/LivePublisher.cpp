@@ -14,7 +14,6 @@
 #include "base/global.h"
 #include "base/config.h"
 #include "base/common.h"
-//#include "audio/AACEncoder.h"
 #include "audio/MicAudioCapture.h"
 #include "audio/LoopbackAudioCapture.h"
 
@@ -82,7 +81,7 @@ LivePublisher::LivePublisher()
 	: m_encoder(NULL)
 	, m_engine(NULL)
 	, m_provider(kProviderNetease)
-	, m_event_handler(NULL)
+	, m_event_handler( new AgoraEventHandler(this) )
 	, m_start_time(0)
 	, m_time(0)
 	, m_started(false)
@@ -206,8 +205,7 @@ bool LivePublisher::Start(int64_t user_id, uint32_t room_id, const std::string& 
 		int ret;
 		agora::rtc::RtcEngineContext ctx;
 		ctx.appId = AGORA_APP_ID;
-		// TODO: leaky memery
-		m_event_handler = new AgoraEventHandler(this);
+		// TODO: 解决内存泄漏的问题（待检查）
 		m_event_handler->m_callback = callback;
 		ctx.eventHandler = m_event_handler;
 		m_engine = createAgoraRtcEngine();

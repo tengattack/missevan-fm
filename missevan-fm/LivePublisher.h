@@ -18,8 +18,6 @@
 #include "base/SliceBuffer.h"
 #include "audio/common.h"
 
-//#include "base/Rtmp.h"
-
 class CAACEncoder;
 class CAudioCapture;
 class LivePublisher;
@@ -58,8 +56,11 @@ protected:
 	AudioFormat m_format;
 	uint32 m_start_time;
 	CAACEncoder *m_encoder;
+
+	// ÉùÍø Agora Ïà¹Ø
 	agora::rtc::IRtcEngine *m_engine;
-	AgoraEventHandler *m_event_handler;
+	AgoraEventHandler* m_event_handler;
+
 	SProvider m_provider;
 	std::vector<LivePublisherCapture *> m_captures;
 	std::string m_push_url;
