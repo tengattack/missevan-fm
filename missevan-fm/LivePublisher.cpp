@@ -18,6 +18,7 @@
 #include "audio/LoopbackAudioCapture.h"
 
 #include "UserAccount.h"
+#include "Server.h"
 
 #define LPM_CREATE       WM_USER + 1
 #define LPM_DATA         WM_USER + 2
@@ -48,8 +49,6 @@ public:
 	virtual void onError(int err, const char* msg);
 
 	LivePublisher::ChatCallback			m_callback;
-	int									m_lastError;
-
 };
 
 AgoraEventHandler::AgoraEventHandler(LivePublisher *publisher)
@@ -65,16 +64,14 @@ void AgoraEventHandler::onJoinChannelSuccess(const char* channel, agora::rtc::ui
 {
 	std::string str;
 	LOG(INFO) << base::SStringPrintf(&str, "Agora join channel success: %s, uid: %u, elapsed: %d", channel, uid, elapsed);
-	m_callback(200);
+	m_callback(Server::kSOk);
 }
 
 void AgoraEventHandler::onError(int err, const char* msg)
 {
 	std::string str;
-	if (m_lastError == err) return;
-	m_lastError = err;
 	LOG(ERROR) << base::SStringPrintf(&str, "Agora on error: %d %s", err, msg);
-	m_callback(err);
+	m_callback(Server::kSInternalError);
 }
 
 LivePublisher::LivePublisher()
