@@ -49,6 +49,8 @@ public:
 	virtual void onError(int err, const char* msg);
 
 	LivePublisher::ChatCallback			m_callback;
+	int									m_lastError;
+
 };
 
 AgoraEventHandler::AgoraEventHandler(LivePublisher *publisher)
@@ -64,12 +66,14 @@ void AgoraEventHandler::onJoinChannelSuccess(const char* channel, agora::rtc::ui
 {
 	std::string str;
 	LOG(INFO) << base::SStringPrintf(&str, "Agora join channel success: %s, uid: %u, elapsed: %d", channel, uid, elapsed);
-	m_callback(0);
+	m_callback(200);
 }
 
 void AgoraEventHandler::onError(int err, const char* msg)
 {
 	std::string str;
+	if (m_lastError == err) return;
+	m_lastError = err;
 	LOG(ERROR) << base::SStringPrintf(&str, "Agora on error: %d %s", err, msg);
 	m_callback(err);
 }
@@ -190,11 +194,13 @@ int LivePublisher::GetActiveCaptureCount()
 }
 
 bool LivePublisher::Start(int64_t user_id, uint32_t room_id, const std::string& room_name, const std::string& push_url, SProvider provider,
+	const std::string& key,
 	ChatCallback callback)
 {
 	LOG(INFO) << "Live Publisher starting...";
 
-	m_provider = kProviderAgora;// 强制使用 Agora
+	// 强制使用 Agora
+	m_provider = kProviderAgora;
 
 	if (m_provider == kProviderAgora) {
 		int ret;
@@ -259,7 +265,7 @@ bool LivePublisher::Start(int64_t user_id, uint32_t room_id, const std::string& 
 		// 		LOG(ERROR) << "Agora engine config publisher failed! error code: " << ret;
 		// }
 		agora::rtc::uid_t agoraUserId = UserAccount::GetInstance()->GetAgoraUserId();
-		ret = m_engine->joinChannel("", room_name.c_str(), publisher_info.c_str(), agoraUserId);
+		ret = m_engine->joinChannel(key.c_str(), room_name.c_str(), publisher_info.c_str(), agoraUserId);
 		if (ret != 0) {
 	 		LOG(ERROR) << "Agora engine join channel failed! error: " << ret;
 		}

@@ -257,7 +257,8 @@ int ChatManager::setupAgoraEngine()
 	return 0;
 }
 
-void ChatManager::CreateRoom(int64_t user_id, uint32_t room_id, const std::string& room_name, const std::string& push_url, SProvider provider, ChatCallback cb)
+void ChatManager::CreateRoom(int64_t user_id, uint32_t room_id, const std::string& room_name, const std::string& push_url, SProvider provider, 
+	const std::string& key, ChatCallback cb)
 {
 	m_provider = provider;
 	m_room_id = room_id;
@@ -306,7 +307,7 @@ void ChatManager::CreateRoom(int64_t user_id, uint32_t room_id, const std::strin
 		// 		LOG(ERROR) << "Agora engine config publisher failed! error code: " << ret;
 		// }
 		agora::rtc::uid_t agoraUserId = UserAccount::GetInstance()->GetAgoraUserId();
-		ret = m_engine->joinChannel("", room_name.c_str(), publisher_info.c_str(), agoraUserId);
+		ret = m_engine->joinChannel(key.c_str(), room_name.c_str(), publisher_info.c_str(), agoraUserId);
 		if (ret != 0) {
 			LOG(ERROR) << "Agora engine join channel failed! error: " << ret;
 			m_stat = kChatNone;
@@ -323,7 +324,8 @@ void ChatManager::CreateRoom(int64_t user_id, uint32_t room_id, const std::strin
 	}
 }
 
-void ChatManager::JoinRoom(int64_t user_id, uint32_t room_id, const std::string& room_name, SProvider provider, ChatCallback cb)
+void ChatManager::JoinRoom(int64_t user_id, uint32_t room_id, const std::string& room_name, SProvider provider, 
+	const std::string& key, ChatCallback cb)
 {
 	m_provider = provider;
 	m_room_id = room_id;
@@ -348,7 +350,8 @@ void ChatManager::JoinRoom(int64_t user_id, uint32_t room_id, const std::string&
 		// config.owner = false;
 		// ret = m_engine->configPublisher(config);
 
-		ret = m_engine->joinChannel(NULL, room_name.c_str(), NULL, (agora::rtc::uid_t)user_id);
+		agora::rtc::uid_t agoraUserId = UserAccount::GetInstance()->GetAgoraUserId();
+		ret = m_engine->joinChannel(key.c_str(), room_name.c_str(), NULL, agoraUserId);
 		if (ret != 0) {
 			LOG(ERROR) << "Agora engine join channel failed! error: " << ret;
 			m_stat = kChatNone;

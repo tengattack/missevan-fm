@@ -116,8 +116,8 @@ int64_t UserAccount::GetUserId()
 
 int64_t UserAccount::GetAgoraUserId()
 {
-	// user_id * 10 + x （这里 x 为 4）
-	return GetUserId() * 10 + 4;
+	// user_id * 10 + x （这里 x 为 3）
+	return GetUserId() * 10 + 3;
 }
 
 std::wstring UserAccount::GetUsername()

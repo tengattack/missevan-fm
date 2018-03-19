@@ -107,6 +107,7 @@ public:
 	bool IsCopyMicLeftChannel();
 
 	bool Start(int64_t user_id, uint32_t room_id, const std::string& room_name, const std::string& push_url, SProvider provider,
+		const std::string& key,
 		ChatCallback callback);
 	void Stop();
 	void Shutdown();
