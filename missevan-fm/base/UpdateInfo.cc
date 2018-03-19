@@ -191,7 +191,7 @@ bool CUpdateInfo::CompareVersion(std::string& current_version)
 	base::SplitString(current_version, L'.', &ver_current);
 
 	int major_server = 0, major_current = 0;
-	int version_index = 0;
+	size_t version_index = 0;
 #ifdef _DEBUG
 	return true;
 #endif
@@ -233,7 +233,7 @@ bool CUpdateInfo::SaveVersion()
 		// save to `temp/restart.json`
 		DictionaryValue v;
 		ListValue *lv = new ListValue();
-		for (int i = 0; i < m_replacelist.size(); i++) {
+		for (size_t i = 0; i < m_replacelist.size(); i++) {
 			DictionaryValue *dv = new DictionaryValue();
 			dv->SetString("path", m_replacelist[i].path);
 			lv->Append(dv);
@@ -267,7 +267,7 @@ bool CUpdateInfo::NeedToDownload(int iIndex)
 	base::CFile file;
 	std::wstring filename = m_path;
 	std::wstring tmppath = uf.path;
-	for (int i = 0; i < tmppath.length(); i++)
+	for (size_t i = 0; i < tmppath.length(); i++)
 	{
 		if (tmppath[i] == L'/') tmppath[i] = L'\\';
 	}
@@ -395,7 +395,7 @@ CUpdateInfo::UpdateStat CUpdateInfo::UpdateFile(int iIndex)
 	base::SplitString(m_vecfiles[iIndex].path, L'/', &r);
 	if (r.size() > 1)
 	{
-		for (int i = 0; i < r.size() - 1; i++)
+		for (size_t i = 0; i < r.size() - 1; i++)
 		{
 			path += r[i];
 			::CreateDirectory(path.c_str(), NULL);
@@ -491,7 +491,7 @@ CUpdateInfo::UpdateStat CUpdateInfo::UpdateFile(int iIndex)
 int CUpdateInfo::GetTotalSize()
 {
 	int totalsize = 0;
-	for (int i = 0; i < m_vecfiles.size(); i++)
+	for (size_t i = 0; i < m_vecfiles.size(); i++)
 	{
 		totalsize += m_vecfiles[i].size;
 	}

@@ -18,8 +18,6 @@
 #include "base/SliceBuffer.h"
 #include "audio/common.h"
 
-//#include "base/Rtmp.h"
-
 class CAACEncoder;
 class CAudioCapture;
 class LivePublisher;
