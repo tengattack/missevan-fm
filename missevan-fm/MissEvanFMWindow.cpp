@@ -65,7 +65,7 @@ int curldav_dl_progress_func(void* ptr, double rDlTotal, double rDlNow, double r
 	ProcessInfo* pi = (ProcessInfo *)ptr;
 	if (pi)
 	{
-		pi->pb->SetPos(100.0 * (CMissEvanFMWindow::m_base_size + pi->dt->currentpos + rDlNow) / (float)pi->dt->totalsize);	//设置进度条的值 
+		pi->pb->SetPos(100.0f * float(CMissEvanFMWindow::m_base_size + pi->dt->currentpos + rDlNow) / (float)pi->dt->totalsize);	//设置进度条的值 
 	}
 	return 0;
 }
@@ -338,7 +338,7 @@ DWORD WINAPI CMissEvanFMWindow::InitUpdateProc(LPVOID lParam)
 		return 0;
 	}
 
-	m_base_size = (double)totalsize * 0.03f;	//占 3%
+	m_base_size = int(float(totalsize) * 0.03f);	//占 3%
 
 	struct DownloadFile dfile =
 	{
@@ -350,7 +350,7 @@ DWORD WINAPI CMissEvanFMWindow::InitUpdateProc(LPVOID lParam)
 		&pWindow->pb, &dfile
 	};
 
-	pWindow->pb.SetPos(100.0 * m_base_size / (float)dfile.totalsize);
+	pWindow->pb.SetPos(100.0f * float(m_base_size) / float(dfile.totalsize));
 
 	int iFile;
 	for (iFile = 0; iFile < ui->GetFilesCount(); iFile++)
