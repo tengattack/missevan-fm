@@ -17,6 +17,7 @@
 #include "Server.h"
 
 #include "ChatManager.h"
+#include "UserAccount.h"
 
 ChatManager *ChatManager::chatManager = NULL;
 DeviceManager *ChatManager::dm = NULL;
@@ -199,6 +200,16 @@ void ChatManager::onError(int err, const char* msg)
 {
 	std::string str;
 	LOG(ERROR) << base::SStringPrintf(&str, "Agora on error: %d %s", err, msg);
+	switch (m_stat) {
+	case kChatOwnerConnecting:
+		CallCallback(kChatCreateRoomCb, Server::kSInternalError);
+		m_stat = kChatNone;
+		break;
+	case kChatUserConnecting:
+		CallCallback(kChatJoinRoomCb, Server::kSInternalError);
+		m_stat = kChatNone;
+		break;
+	}
 }
 
 void ChatManager::CallCallback(ChatCbType type, int code)
@@ -229,13 +240,14 @@ int ChatManager::setupAgoraEngine()
 	}
 
 	m_engine->setChannelProfile(agora::rtc::CHANNEL_PROFILE_LIVE_BROADCASTING);
-	m_engine->setClientRole(agora::rtc::CLIENT_ROLE_BROADCASTER, NULL);
+	m_engine->setClientRole(agora::rtc::CLIENT_ROLE_BROADCASTER);
 	m_engine->disableVideo();
 
 	agora::rtc::RtcEngineParameters params(m_engine);
 	std::wstring log_path = global::log_path;
 	log_path += L"agora.log";
 	params.setLogFile(WideToUTF8(log_path).c_str());
+	std::cout << "path is: " << WideToUTF8(log_path).c_str();
 	// INFO | WARNING | ERROR | FATAL
 	params.setLogFilter(15);
 	params.setHighQualityAudioParameters(true, true, true);
@@ -245,7 +257,8 @@ int ChatManager::setupAgoraEngine()
 	return 0;
 }
 
-void ChatManager::CreateRoom(int64_t user_id, uint32_t room_id, const std::string& room_name, const std::string& push_url, SProvider provider, ChatCallback cb)
+void ChatManager::CreateRoom(int64_t user_id, uint32_t room_id, const std::string& room_name, const std::string& push_url, SProvider provider, 
+	const std::string& key, ChatCallback cb)
 {
 	m_provider = provider;
 	m_room_id = room_id;
@@ -293,7 +306,8 @@ void ChatManager::CreateRoom(int64_t user_id, uint32_t room_id, const std::strin
 		// if (ret != 0) {
 		// 		LOG(ERROR) << "Agora engine config publisher failed! error code: " << ret;
 		// }
-		ret = m_engine->joinChannel(NULL, room_name.c_str(), publisher_info.c_str(), (agora::rtc::uid_t)user_id);
+		agora::rtc::uid_t agoraUserId = UserAccount::GetInstance()->GetAgoraUserId();
+		ret = m_engine->joinChannel(key.c_str(), room_name.c_str(), publisher_info.c_str(), agoraUserId);
 		if (ret != 0) {
 			LOG(ERROR) << "Agora engine join channel failed! error: " << ret;
 			m_stat = kChatNone;
@@ -310,7 +324,8 @@ void ChatManager::CreateRoom(int64_t user_id, uint32_t room_id, const std::strin
 	}
 }
 
-void ChatManager::JoinRoom(int64_t user_id, uint32_t room_id, const std::string& room_name, SProvider provider, ChatCallback cb)
+void ChatManager::JoinRoom(int64_t user_id, uint32_t room_id, const std::string& room_name, SProvider provider, 
+	const std::string& key, ChatCallback cb)
 {
 	m_provider = provider;
 	m_room_id = room_id;
@@ -335,7 +350,8 @@ void ChatManager::JoinRoom(int64_t user_id, uint32_t room_id, const std::string&
 		// config.owner = false;
 		// ret = m_engine->configPublisher(config);
 
-		ret = m_engine->joinChannel(NULL, room_name.c_str(), NULL, (agora::rtc::uid_t)user_id);
+		agora::rtc::uid_t agoraUserId = UserAccount::GetInstance()->GetAgoraUserId();
+		ret = m_engine->joinChannel(key.c_str(), room_name.c_str(), NULL, agoraUserId);
 		if (ret != 0) {
 			LOG(ERROR) << "Agora engine join channel failed! error: " << ret;
 			m_stat = kChatNone;

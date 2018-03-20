@@ -31,12 +31,8 @@
 #include <Windows.h>
 #include <tchar.h>
 #endif
-//#include "..\stdafx.h"
-//#include "..\Gh0stDarkAttack.h"
 #include "TrayIcon.h"
 #include "Menu.h"
-//#include "base/frame/frame_window.h"
-//#include "base/frame/dialog.h"
 #include "../base/global.h"
 
 #ifdef _DEBUG

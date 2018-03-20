@@ -348,22 +348,24 @@ void Server::onAction(const SAction action, Json::Value &value, websocketpp::con
 				m_player_ptr->Stop();
 			}
 
+			const std::string& key_name = value.get("key", "").asString();// 新添加的Key
 			const std::string& room_name = value.get("room_name", "").asString();
 			SProvider provider = ParseProvider(value.get("provider", "").asString());
 			auto opcode = msg->get_opcode();
 			if (type == "live") {
-				bool bRet = m_publisher_ptr->Start(m_user_ptr->GetUserId(), room_id, room_name, push_url, provider);
-
-				Json::FastWriter fs;
-				Json::Value ret_value;
-				ret_value["code"] = bRet ? kSOk : kSInternalError;
-				ret_value["action"] = GetActionText(kActionStartPush);
-				m_server.send(hdl, fs.write(ret_value), opcode);
+				bool bRet = m_publisher_ptr->Start(m_user_ptr->GetUserId(), room_id, room_name, push_url, provider, key_name,
+					[this, hdl, opcode](int code) {
+					Json::FastWriter fs;
+					Json::Value ret_value;
+					ret_value["code"] = code;
+					ret_value["action"] = GetActionText(kActionStartPush);
+					m_server.send(hdl, fs.write(ret_value), opcode);
+				});
 			} else if (type == "connect") {
 				if (room_name.empty()) {
 					params_error = true;
 				} else {
-					m_cm_ptr->CreateRoom(m_user_ptr->GetUserId(), room_id, room_name, push_url, provider, [this, hdl, opcode](int code) {
+					m_cm_ptr->CreateRoom(m_user_ptr->GetUserId(), room_id, room_name, push_url, provider, key_name, [this, hdl, opcode](int code) {
 						Json::FastWriter fs;
 						Json::Value ret_value;
 						ret_value["code"] = code;
@@ -378,6 +380,7 @@ void Server::onAction(const SAction action, Json::Value &value, websocketpp::con
 	} else if (action == kActionJoinConnect) {
 		const uint32_t room_id = value.get("room_id", 0).asUInt();
 		const std::string& room_name = value.get("room_name", "").asString();
+		const std::string& key_name = value.get("key", "").asString();// 新添加的Key
 		if (!room_id || room_name.empty()) {
 			params_error = true;
 		} else {
@@ -386,7 +389,7 @@ void Server::onAction(const SAction action, Json::Value &value, websocketpp::con
 			}
 			SProvider provider = ParseProvider(value.get("provider", "").asString());
 			auto opcode = msg->get_opcode();
-			m_cm_ptr->JoinRoom(m_user_ptr->GetUserId(), room_id, room_name, provider, [this, hdl, opcode](int code) {
+			m_cm_ptr->JoinRoom(m_user_ptr->GetUserId(), room_id, room_name, provider, key_name, [this, hdl, opcode](int code) {
 				Json::FastWriter fs;
 				Json::Value ret_value;
 				ret_value["code"] = code;

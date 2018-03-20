@@ -38,8 +38,10 @@ public:
 		return m_stat;
 	};
 
-	void CreateRoom(int64_t user_id, uint32_t room_id, const std::string& room_name, const std::string& push_url, SProvider provider, ChatCallback cb = NULL);
-	void JoinRoom(int64_t user_id, uint32_t room_id, const std::string& room_name, SProvider provider, ChatCallback cb = NULL);
+	void CreateRoom(int64_t user_id, uint32_t room_id, const std::string& room_name, const std::string& push_url, SProvider provider, 
+		const std::string& key, ChatCallback cb = NULL);
+	void JoinRoom(int64_t user_id, uint32_t room_id, const std::string& room_name, SProvider provider, 
+		const std::string& key, ChatCallback cb = NULL);
 	void LeaveRoom();
 
 	bool IsBGMEnabled();

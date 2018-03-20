@@ -202,5 +202,5 @@ UINT_PTR CMainWindow::SetTimer(UINT_PTR nIDEvent, UINT uElapse, TIMERPROC lpTime
 
 bool CMainWindow::KillTimer(UINT_PTR nIDEvent)
 {
-	return static_cast<bool>(::KillTimer(m_hWnd, nIDEvent));
+	return ::KillTimer(m_hWnd, nIDEvent) != 0;
 }

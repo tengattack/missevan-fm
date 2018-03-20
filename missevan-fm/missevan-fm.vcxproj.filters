@@ -87,16 +87,10 @@
     <ClInclude Include="audio\LoopbackAudioCapture.h">
       <Filter>audio</Filter>
     </ClInclude>
-    <ClInclude Include="audio\AACEncoder.h">
-      <Filter>audio</Filter>
-    </ClInclude>
     <ClInclude Include="base\types.h">
       <Filter>base</Filter>
     </ClInclude>
     <ClInclude Include="base\SliceBuffer.h">
-      <Filter>base</Filter>
-    </ClInclude>
-    <ClInclude Include="base\Rtmp.h">
       <Filter>base</Filter>
     </ClInclude>
     <ClInclude Include="LivePublisher.h">
@@ -146,12 +140,6 @@
     <ClCompile Include="MainTray.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\sdks\tengattack\cuteui\base\base_util.cc">
-      <Filter>base</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\sdks\tengattack\common\common_util.cc">
-      <Filter>base</Filter>
-    </ClCompile>
     <ClCompile Include="base\UpdateInfo.cc">
       <Filter>base</Filter>
     </ClCompile>
@@ -167,13 +155,7 @@
     <ClCompile Include="audio\LoopbackAudioCapture.cpp">
       <Filter>audio</Filter>
     </ClCompile>
-    <ClCompile Include="audio\AACEncoder.cpp">
-      <Filter>audio</Filter>
-    </ClCompile>
     <ClCompile Include="base\SliceBuffer.cpp">
-      <Filter>base</Filter>
-    </ClCompile>
-    <ClCompile Include="base\Rtmp.cpp">
       <Filter>base</Filter>
     </ClCompile>
     <ClCompile Include="LivePublisher.cpp">
@@ -184,6 +166,12 @@
     </ClCompile>
     <ClCompile Include="base\config.cpp">
       <Filter>base</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\sdks\fr\common\common_util.cc">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\sdks\fr\cuteui\base\base_util.cc">
+      <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

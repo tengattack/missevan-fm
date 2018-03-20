@@ -345,8 +345,7 @@ DWORD CLoopbackAudioCapture::WasapiThread(LPVOID Context)
 	}
 
 	// Calculate the actual duration of the allocated buffer.
-	hnsActualDuration = (double)REFTIMES_PER_SEC *
-		bufferFrameCount / pwfx->nSamplesPerSec;
+	hnsActualDuration = REFTIMES_PER_SEC * bufferFrameCount / pwfx->nSamplesPerSec;
 
 	hr = pCapture->_AudioClient->Start();
 	if (FAILED(hr))
@@ -360,7 +359,8 @@ DWORD CLoopbackAudioCapture::WasapiThread(LPVOID Context)
 	while (stillPlaying)
 	{
 		// Sleep for half the buffer duration.
-		DWORD waitResult = WaitForMultipleObjects(2, waitArray, FALSE, hnsActualDuration / REFTIMES_PER_MILLISEC / 2);
+		REFERENCE_TIME waitResult = WaitForMultipleObjects(2, waitArray, FALSE, 
+			DWORD(hnsActualDuration / REFTIMES_PER_MILLISEC / 2));
 
 		switch (waitResult) {
 		case WAIT_OBJECT_0 + 0: /* _ShutdownEvent */

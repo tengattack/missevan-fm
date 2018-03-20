@@ -18,8 +18,6 @@
 #include "base/SliceBuffer.h"
 #include "audio/common.h"
 
-#include "base/Rtmp.h"
-
 class CAACEncoder;
 class CAudioCapture;
 class LivePublisher;
@@ -54,18 +52,22 @@ typedef struct _LivePublisherCapture {
 class LivePublisher
 {
 protected:
-	CRtmp *m_rtmp_ptr;
+	//CRtmp *m_rtmp_ptr;
 	AudioFormat m_format;
 	uint32 m_start_time;
 	CAACEncoder *m_encoder;
+
+	// ÉùÍø Agora Ïà¹Ø
 	agora::rtc::IRtcEngine *m_engine;
-	AgoraEventHandler *m_event_handler;
+	AgoraEventHandler* m_event_handler;
+
 	SProvider m_provider;
 	std::vector<LivePublisherCapture *> m_captures;
 	std::string m_push_url;
 	HANDLE m_mixer_thread;
 	DWORD m_mixer_threadid;
 	Event m_mixer_event;
+	Event m_callback_event;
 	Lock m_lock;
 	CSliceBuffer m_buf;
 	uint32 m_time;
@@ -96,6 +98,7 @@ public:
 		int length;
 		ulong timeoffset;
 	} AACData;
+	typedef std::function<void(int)> ChatCallback;
 
 	LivePublisher();
 	~LivePublisher();
@@ -104,7 +107,9 @@ public:
 	bool IsLoopbackEnabled();
 	bool IsCopyMicLeftChannel();
 
-	bool Start(int64_t user_id, uint32_t room_id, const std::string& room_name, const std::string& push_url, SProvider provider);
+	bool Start(int64_t user_id, uint32_t room_id, const std::string& room_name, const std::string& push_url, SProvider provider,
+		const std::string& key,
+		ChatCallback callback);
 	void Stop();
 	void Shutdown();
 

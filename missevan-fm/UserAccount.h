@@ -37,7 +37,7 @@ public:
 
 	std::wstring GetUsername();
 	int64_t GetUserId();
-
+	uint32_t GetAgoraUserId();
 protected:
 
 	UserAccount();

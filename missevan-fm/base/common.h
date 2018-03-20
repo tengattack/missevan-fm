@@ -8,7 +8,7 @@
 #define NIM_ENCRYPT_KEY "axSxYns0PHqVy9Bz"
 
 #define AGORA_APP_ID "6a44ca27d06843c79d8cf9c8af3a34e3"
-
+					
 #define APP_LOG_FOLDER "MissEvanFM"
 #define APP_CLASSNAME L"MissEvanFM"
 #define APP_NAME L"Ã¨¶úFMÖ±²¥ÖúÊÖ"
