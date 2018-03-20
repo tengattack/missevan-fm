@@ -48,8 +48,12 @@ public:
 	virtual void onJoinChannelSuccess(const char* channel, agora::rtc::uid_t uid, int elapsed);
 	virtual void onError(int err, const char* msg);
 
-	LivePublisher::ChatCallback			m_callback;
+	static LivePublisher::ChatCallback	s_callback;
+	static bool							s_runOnceOnConnect;
 };
+
+LivePublisher::ChatCallback AgoraEventHandler::s_callback = NULL;
+bool AgoraEventHandler::s_runOnceOnConnect = true;
 
 AgoraEventHandler::AgoraEventHandler(LivePublisher *publisher)
 	: m_publiser(publisher)
@@ -64,19 +68,19 @@ void AgoraEventHandler::onJoinChannelSuccess(const char* channel, agora::rtc::ui
 {
 	std::string str;
 	LOG(INFO) << base::SStringPrintf(&str, "Agora join channel success: %s, uid: %u, elapsed: %d", channel, uid, elapsed);
-	m_callback(Server::kSOk);
+	s_runOnceOnConnect = true;
+	s_callback(Server::kSOk);
 }
 
 void AgoraEventHandler::onError(int err, const char* msg)
 {
 	std::string str;
 	LOG(ERROR) << base::SStringPrintf(&str, "Agora on error: %d %s", err, msg);
-	static bool runOnce = true;
-	if (runOnce)
+	if (s_runOnceOnConnect)
 	{
-		m_callback(Server::kSInternalError);
-		m_callback = NULL;
-		runOnce = false;
+		s_callback(Server::kSInternalError);
+		s_callback = NULL;
+		s_runOnceOnConnect = false;
 	}
 }
 
@@ -111,6 +115,7 @@ LivePublisher::~LivePublisher()
 	file.Close();
 #endif
 	Shutdown();
+	delete m_event_handler;
 }
 
 uint32 LivePublisher::GetBufferLength()
@@ -209,7 +214,7 @@ bool LivePublisher::Start(int64_t user_id, uint32_t room_id, const std::string& 
 		agora::rtc::RtcEngineContext ctx;
 		ctx.appId = AGORA_APP_ID;
 
-		m_event_handler->m_callback = callback;
+		m_event_handler->s_callback = callback;
 		ctx.eventHandler = m_event_handler;
 		m_engine = createAgoraRtcEngine();
 		ret = m_engine->initialize(ctx);
