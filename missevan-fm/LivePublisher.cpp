@@ -216,17 +216,20 @@ bool LivePublisher::Start(int64_t user_id, uint32_t room_id, const std::string& 
 
 		m_event_handler->s_callback = callback;
 		ctx.eventHandler = m_event_handler;
-		m_engine = createAgoraRtcEngine();
-		ret = m_engine->initialize(ctx);
-		if (ret != 0) {
-			LOG(ERROR) << "Agora engine init failed! error: " << ret;
-			callback(ret);
-			return false;
+		if (m_engine == NULL)
+		{
+			m_engine = createAgoraRtcEngine();
+			ret = m_engine->initialize(ctx);
+			if (ret != 0) {
+				LOG(ERROR) << "ctx.appId is: " << ctx.appId;
+				LOG(ERROR) << "Agora engine init failed! error: " << ret;
+				callback(ret);
+				return false;
+			}
+			m_engine->setChannelProfile(agora::rtc::CHANNEL_PROFILE_LIVE_BROADCASTING);
+			m_engine->setClientRole(agora::rtc::CLIENT_ROLE_BROADCASTER);
+			m_engine->disableVideo();
 		}
-
-		m_engine->setChannelProfile(agora::rtc::CHANNEL_PROFILE_LIVE_BROADCASTING);
-		m_engine->setClientRole(agora::rtc::CLIENT_ROLE_BROADCASTER);
-		m_engine->disableVideo();
 
 		agora::rtc::RtcEngineParameters params(m_engine);
 		std::wstring log_path = global::log_path;
