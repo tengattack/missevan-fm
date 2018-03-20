@@ -75,6 +75,7 @@ void AgoraEventHandler::onError(int err, const char* msg)
 	if (runOnce)
 	{
 		m_callback(Server::kSInternalError);
+		m_callback = NULL;
 		runOnce = false;
 	}
 }
@@ -207,7 +208,7 @@ bool LivePublisher::Start(int64_t user_id, uint32_t room_id, const std::string& 
 		int ret;
 		agora::rtc::RtcEngineContext ctx;
 		ctx.appId = AGORA_APP_ID;
-		// TODO: 解决内存泄漏的问题（待检查）
+
 		m_event_handler->m_callback = callback;
 		ctx.eventHandler = m_event_handler;
 		m_engine = createAgoraRtcEngine();
