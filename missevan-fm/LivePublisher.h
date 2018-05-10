@@ -81,6 +81,7 @@ protected:
 	bool m_enable_copy_mic_left;
 	LivePublisherCapture* NewCapture(LivePublisherCaptureType type);
 	LivePublisherCapture* GetCapture(LivePublisherCaptureType type);
+	void ShutdownCapture();
 	int GetActiveCaptureCount();
 	uint32 GetBufferLength();
 	ulong GetInputSamples();

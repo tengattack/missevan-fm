@@ -22,6 +22,8 @@ using websocketpp::lib::placeholders::_1;
 using websocketpp::lib::placeholders::_2;
 using websocketpp::lib::bind;
 
+#define STR_HEARTBEAT "\xe2\x9d\xa4"
+
 std::string get_password() {
 	return "test";
 }
@@ -189,6 +191,9 @@ void Server::onWebSocketMessage(Server* s, websocketpp::connection_hdl hdl, Serv
 	// it can be cleanly exited.
 	if (msg->get_payload() == "stop") {
 		//s->stop();
+		return;
+	} else if (msg->get_payload().substr(0, sizeof(STR_HEARTBEAT) - 1) == STR_HEARTBEAT) {
+		s->m_server.send(hdl, msg->get_payload(), msg->get_opcode());
 		return;
 	}
 
@@ -380,7 +385,7 @@ void Server::onAction(const SAction action, Json::Value &value, websocketpp::con
 	} else if (action == kActionJoinConnect) {
 		const uint32_t room_id = value.get("room_id", 0).asUInt();
 		const std::string& room_name = value.get("room_name", "").asString();
-		const std::string& key_name = value.get("key", "").asString();// 新添加的Key
+		const std::string& key = value.get("key", "").asString();// 新添加的Key
 		if (!room_id || room_name.empty()) {
 			params_error = true;
 		} else {
@@ -389,7 +394,7 @@ void Server::onAction(const SAction action, Json::Value &value, websocketpp::con
 			}
 			SProvider provider = ParseProvider(value.get("provider", "").asString());
 			auto opcode = msg->get_opcode();
-			m_cm_ptr->JoinRoom(m_user_ptr->GetUserId(), room_id, room_name, provider, key_name, [this, hdl, opcode](int code) {
+			m_cm_ptr->JoinRoom(m_user_ptr->GetUserId(), room_id, room_name, provider, key, [this, hdl, opcode](int code) {
 				Json::FastWriter fs;
 				Json::Value ret_value;
 				ret_value["code"] = code;
