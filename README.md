@@ -1,14 +1,20 @@
 # missevan-fm
 
 ## Dependencies
+
 ### [vcpkg](https://github.com/Microsoft/vcpkg) 管理
+
 * boost
+```sh
+```
 * curl
 * jsoncpp
 * openssl
 * websocketpp
 * zlib
+
 ### 其他
+
 * lzma
 * [fr](https://github.com/tengattack/fr)
 * [Agora_Native_SDK_for_Windows](https://agora.io/)
