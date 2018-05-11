@@ -9,9 +9,9 @@
 * jsoncpp
 * openssl
 * websocketpp
-* zlib
+
 ```sh
-vcpkg install boost curl jsoncpp openssl websocketpp zlib
+vcpkg install boost curl jsoncpp openssl websocketpp
 ```
 
 ### 其他
