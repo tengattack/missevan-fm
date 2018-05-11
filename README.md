@@ -5,13 +5,14 @@
 ### [vcpkg](https://github.com/Microsoft/vcpkg) 管理
 
 * boost
-```sh
-```
 * curl
 * jsoncpp
 * openssl
 * websocketpp
 * zlib
+```sh
+vcpkg install boost curl jsoncpp openssl websocketpp zlib
+```
 
 ### 其他
 
