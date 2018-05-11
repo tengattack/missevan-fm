@@ -1,7 +1,7 @@
 # missevan-fm
 
 ## Dependencies
-### vcpkg管理
+### [vcpkg](https://github.com/Microsoft/vcpkg) 管理
 * boost
 * curl
 * jsoncpp
