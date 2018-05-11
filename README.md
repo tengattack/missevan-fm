@@ -1,13 +1,14 @@
 # missevan-fm
 
 ## Dependencies
-
-* jsoncpp
-* websocketpp
+### vcpkg管理
 * boost
-* zlib
-* openssl
 * curl
+* jsoncpp
+* openssl
+* websocketpp
+* zlib
+### 其他
 * lzma
 * [fr](https://github.com/tengattack/fr)
 * [Agora_Native_SDK_for_Windows](https://agora.io/)
@@ -21,20 +22,13 @@
 │   └── ...
 ├── sdks/
 │   ├── Agora_Native_SDK_for_Windows_v2.1.3_FULL/
-│   ├── curl-7.54.1/
 │   ├── fr/
-│   ├── jsoncpp/
 │   ├── lib/
-│   │   ├── boost/
 │   │   ├── debug-vc100/
-│   │   ├── openssl/
 │   │   ├── static-vc100/
 │   │   └── ...
 │   ├── LivePlayer_Windows_SDK_v1.0.1/
 │   ├── lzma920/
 │   ├── NIM_PC_SDK_x86_x64_v4.9.0/
-│   ├── openssl-1.1.0f/
-│   ├── websocketpp/
-│   ├── zlib-1.2.11/
 │   └── lzmahelper.h
 ```
