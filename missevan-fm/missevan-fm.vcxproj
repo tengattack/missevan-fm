@@ -1,5 +1,5 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<Project DefaultTargets="Build" ToolsVersion="14.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+<Project DefaultTargets="Build" ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="DebugDll|Win32">
       <Configuration>DebugDll</Configuration>
@@ -38,24 +38,25 @@
     <ProjectGuid>{741A3661-B1EB-451C-9E57-FB5D8D092558}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
     <RootNamespace>missevanfm</RootNamespace>
+    <WindowsTargetPlatformVersion>10.0.17134.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v100</PlatformToolset>
+    <PlatformToolset>v141</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='DebugDll|Win32'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v100</PlatformToolset>
+    <PlatformToolset>v141</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v100</PlatformToolset>
+    <PlatformToolset>v141</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
     <UseOfMfc>Static</UseOfMfc>
@@ -63,7 +64,7 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='ReleaseDll|Win32'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v100</PlatformToolset>
+    <PlatformToolset>v141</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
     <UseOfMfc>Static</UseOfMfc>
@@ -71,19 +72,19 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v100</PlatformToolset>
+    <PlatformToolset>v141</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='DebugDll|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v100</PlatformToolset>
+    <PlatformToolset>v141</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v100</PlatformToolset>
+    <PlatformToolset>v141</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
     <UseOfMfc>Static</UseOfMfc>
@@ -91,7 +92,7 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='ReleaseDll|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v100</PlatformToolset>
+    <PlatformToolset>v141</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
     <UseOfMfc>Static</UseOfMfc>
@@ -141,16 +142,16 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
-    <IncludePath>$(ProjectDir)..\..\sdks\jsoncpp\include\json;$(ProjectDir)..\..\sdks\NIM_PC_SDK_x86_x64_v4.9.0\nim_c_sdk\include;$(ProjectDir)..\..\sdks\NIM_PC_SDK_x86_x64_v4.9.0\nim_c_sdk\util;$(ProjectDir)..\..\sdks\NIM_PC_SDK_x86_x64_v4.9.0\nim_sdk_cpp\api;$(ProjectDir)..\..\sdks\NIM_PC_SDK_x86_x64_v4.9.0\nim_sdk_cpp\helper;$(ProjectDir)..\..\sdks\NIM_PC_SDK_x86_x64_v4.9.0\nim_sdk_cpp\util;$(ProjectDir)..\..\sdks\NIM_PC_SDK_x86_x64_v4.9.0\nim_sdk_cpp;$(IncludePath)</IncludePath>
+    <IncludePath>$(ProjectDir);$(ProjectDir)..\..\sdks\jsoncpp\include\json;$(ProjectDir)..\..\sdks\NIM_PC_SDK_x86_x64_v4.9.0\nim_c_sdk\include;$(ProjectDir)..\..\sdks\NIM_PC_SDK_x86_x64_v4.9.0\nim_c_sdk\util;$(ProjectDir)..\..\sdks\NIM_PC_SDK_x86_x64_v4.9.0\nim_sdk_cpp\api;$(ProjectDir)..\..\sdks\NIM_PC_SDK_x86_x64_v4.9.0\nim_sdk_cpp\helper;$(ProjectDir)..\..\sdks\NIM_PC_SDK_x86_x64_v4.9.0\nim_sdk_cpp\util;$(ProjectDir)..\..\sdks\NIM_PC_SDK_x86_x64_v4.9.0\nim_sdk_cpp;$(ProjectDir)..\..\sdks\fr\;$(ProjectDir)..\..\sdks\fr\cuteui;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='DebugDll|x64'">
     <LinkIncremental>true</LinkIncremental>
-    <IncludePath>$(ProjectDir)..\..\sdks\jsoncpp\include\json;$(ProjectDir)..\..\sdks\NIM_PC_SDK_x86_x64_v4.9.0\nim_c_sdk\include;$(ProjectDir)..\..\sdks\NIM_PC_SDK_x86_x64_v4.9.0\nim_c_sdk\util;$(ProjectDir)..\..\sdks\NIM_PC_SDK_x86_x64_v4.9.0\nim_sdk_cpp\api;$(ProjectDir)..\..\sdks\NIM_PC_SDK_x86_x64_v4.9.0\nim_sdk_cpp\helper;$(ProjectDir)..\..\sdks\NIM_PC_SDK_x86_x64_v4.9.0\nim_sdk_cpp\util;$(ProjectDir)..\..\sdks\NIM_PC_SDK_x86_x64_v4.9.0\nim_sdk_cpp;$(IncludePath)</IncludePath>
+    <IncludePath>$(ProjectDir);$(ProjectDir)..\..\sdks\jsoncpp\include\json;$(ProjectDir)..\..\sdks\NIM_PC_SDK_x86_x64_v4.9.0\nim_c_sdk\include;$(ProjectDir)..\..\sdks\NIM_PC_SDK_x86_x64_v4.9.0\nim_c_sdk\util;$(ProjectDir)..\..\sdks\NIM_PC_SDK_x86_x64_v4.9.0\nim_sdk_cpp\api;$(ProjectDir)..\..\sdks\NIM_PC_SDK_x86_x64_v4.9.0\nim_sdk_cpp\helper;$(ProjectDir)..\..\sdks\NIM_PC_SDK_x86_x64_v4.9.0\nim_sdk_cpp\util;$(ProjectDir)..\..\sdks\NIM_PC_SDK_x86_x64_v4.9.0\nim_sdk_cpp;$(ProjectDir)..\..\sdks\fr\;$(ProjectDir)..\..\sdks\fr\cuteui;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
-    <IncludePath>$(ProjectDir)..\..\sdks;$(ProjectDir)..\..\sdks\fr;$(ProjectDir)..\..\sdks\fr\cuteui;$(ProjectDir)..\..\sdks\jsoncpp\include\json;$(ProjectDir)..\..\sdks\NIM_PC_SDK_x86_x64_v4.9.0\nim_sdk_cpp\api;$(ProjectDir)..\..\sdks\NIM_PC_SDK_x86_x64_v4.9.0\nim_sdk_cpp\util;$(ProjectDir)..\..\sdks\NIM_PC_SDK_x86_x64_v4.9.0\nim_sdk_cpp\helper;$(ProjectDir)..\..\sdks\NIM_PC_SDK_x86_x64_v4.9.0\nim_sdk_cpp;$(ProjectDir)..\..\sdks\NIM_PC_SDK_x86_x64_v4.9.0\nim_c_sdk\include;$(ProjectDir)..\..\sdks\NIM_PC_SDK_x86_x64_v4.9.0\nim_c_sdk\util;$(ProjectDir)..\..\sdks\NIM_PC_SDK_x86_x64_v4.9.0\nim_c_sdk;$(ProjectDir)..\..\sdks\websocketpp;$(ProjectDir)..\..\sdks\curl-7.54.1\builds\libcurl-vc-x86-release-dll-zlib-dll-ipv6-sspi-winssl\include;$(ProjectDir)..\..\sdks\zlib-1.2.11;$(ProjectDir)..\..\sdks\lib\boost\include\boost-1_64;$(ProjectDir)..\..\sdks\lib\openssl\include;$(ProjectDir)..\..\sdks\faac-1.28\include;$(ProjectDir)..\..\sdks\rtmpdump;$(ProjectDir)..\..\sdks\DSPFilters\shared\DSPFilters\include;$(ProjectDir)..\..\sdks\LivePlayer_Windows_SDK_v1.0.1\include;$(ProjectDir)..\..\sdks\Agora_Native_SDK_for_Windows_v2.1.3_FULL\sdk\include;.;$(IncludePath)</IncludePath>
-    <LibraryPath>$(ProjectDir)..\..\sdks\lib;$(ProjectDir)..\..\sdks\Agora_Native_SDK_for_Windows_v2.1.3_FULL\sdk\lib;$(ProjectDir)..\..\sdks\lib\static-vc100;$(ProjectDir)..\..\sdks\lib\static-vc100\Win32;$(ProjectDir)..\..\sdks\lib\boost\lib;$(ProjectDir)..\..\sdks\lib\openssl\lib;$(LibraryPath)</LibraryPath>
+    <IncludePath>$(ProjectDir)..\..\sdks;$(ProjectDir)..\..\sdks\fr;$(ProjectDir)..\..\sdks\fr\cuteui;$(ProjectDir)..\..\sdks\NIM_PC_SDK_x86_x64_v4.9.0\nim_sdk_cpp\api;$(ProjectDir)..\..\sdks\NIM_PC_SDK_x86_x64_v4.9.0\nim_sdk_cpp\util;$(ProjectDir)..\..\sdks\NIM_PC_SDK_x86_x64_v4.9.0\nim_sdk_cpp\helper;$(ProjectDir)..\..\sdks\NIM_PC_SDK_x86_x64_v4.9.0\nim_sdk_cpp;$(ProjectDir)..\..\sdks\NIM_PC_SDK_x86_x64_v4.9.0\nim_c_sdk\include;$(ProjectDir)..\..\sdks\NIM_PC_SDK_x86_x64_v4.9.0\nim_c_sdk\util;$(ProjectDir)..\..\sdks\NIM_PC_SDK_x86_x64_v4.9.0\nim_c_sdk;$(ProjectDir)..\..\sdks\faac-1.28\include;$(ProjectDir)..\..\sdks\DSPFilters\shared\DSPFilters\include;$(ProjectDir)..\..\sdks\LivePlayer_Windows_SDK_v1.0.1\include;$(ProjectDir)..\..\sdks\Agora_Native_SDK_for_Windows_v2.1.3_FULL\sdk\include;.;$(IncludePath)</IncludePath>
+    <LibraryPath>$(ProjectDir)..\..\sdks\lib;$(ProjectDir)..\..\sdks\Agora_Native_SDK_for_Windows_v2.1.3_FULL\sdk\lib;$(ProjectDir)..\..\sdks\lib\static-vc100;$(ProjectDir)..\..\sdks\lib\static-vc100\Win32;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='ReleaseDll|Win32'">
     <LinkIncremental>false</LinkIncremental>
@@ -160,11 +161,11 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
-    <IncludePath>$(ProjectDir)..\..\sdks\jsoncpp\include\json;$(ProjectDir)..\..\sdks\NIM_PC_SDK_x86_x64_v4.9.0\nim_c_sdk\include;$(ProjectDir)..\..\sdks\NIM_PC_SDK_x86_x64_v4.9.0\nim_c_sdk\util;$(ProjectDir)..\..\sdks\NIM_PC_SDK_x86_x64_v4.9.0\nim_sdk_cpp\api;$(ProjectDir)..\..\sdks\NIM_PC_SDK_x86_x64_v4.9.0\nim_sdk_cpp\helper;$(ProjectDir)..\..\sdks\NIM_PC_SDK_x86_x64_v4.9.0\nim_sdk_cpp\util;$(ProjectDir)..\..\sdks\NIM_PC_SDK_x86_x64_v4.9.0\nim_sdk_cpp;$(IncludePath)</IncludePath>
+    <IncludePath>$(ProjectDir);$(ProjectDir)..\..\sdks\jsoncpp\include\json;$(ProjectDir)..\..\sdks\NIM_PC_SDK_x86_x64_v4.9.0\nim_c_sdk\include;$(ProjectDir)..\..\sdks\NIM_PC_SDK_x86_x64_v4.9.0\nim_c_sdk\util;$(ProjectDir)..\..\sdks\NIM_PC_SDK_x86_x64_v4.9.0\nim_sdk_cpp\api;$(ProjectDir)..\..\sdks\NIM_PC_SDK_x86_x64_v4.9.0\nim_sdk_cpp\helper;$(ProjectDir)..\..\sdks\NIM_PC_SDK_x86_x64_v4.9.0\nim_sdk_cpp\util;$(ProjectDir)..\..\sdks\NIM_PC_SDK_x86_x64_v4.9.0\nim_sdk_cpp;$(ProjectDir)..\..\sdks\fr\;$(ProjectDir)..\..\sdks\fr\cuteui;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='ReleaseDll|x64'">
     <LinkIncremental>false</LinkIncremental>
-    <IncludePath>$(ProjectDir)..\..\sdks\jsoncpp\include\json;$(ProjectDir)..\..\sdks\NIM_PC_SDK_x86_x64_v4.9.0\nim_c_sdk\include;$(ProjectDir)..\..\sdks\NIM_PC_SDK_x86_x64_v4.9.0\nim_c_sdk\util;$(ProjectDir)..\..\sdks\NIM_PC_SDK_x86_x64_v4.9.0\nim_sdk_cpp\api;$(ProjectDir)..\..\sdks\NIM_PC_SDK_x86_x64_v4.9.0\nim_sdk_cpp\helper;$(ProjectDir)..\..\sdks\NIM_PC_SDK_x86_x64_v4.9.0\nim_sdk_cpp\util;$(ProjectDir)..\..\sdks\NIM_PC_SDK_x86_x64_v4.9.0\nim_sdk_cpp;$(IncludePath)</IncludePath>
+    <IncludePath>$(ProjectDir);$(ProjectDir)..\..\sdks\jsoncpp\include\json;$(ProjectDir)..\..\sdks\NIM_PC_SDK_x86_x64_v4.9.0\nim_c_sdk\include;$(ProjectDir)..\..\sdks\NIM_PC_SDK_x86_x64_v4.9.0\nim_c_sdk\util;$(ProjectDir)..\..\sdks\NIM_PC_SDK_x86_x64_v4.9.0\nim_sdk_cpp\api;$(ProjectDir)..\..\sdks\NIM_PC_SDK_x86_x64_v4.9.0\nim_sdk_cpp\helper;$(ProjectDir)..\..\sdks\NIM_PC_SDK_x86_x64_v4.9.0\nim_sdk_cpp\util;$(ProjectDir)..\..\sdks\NIM_PC_SDK_x86_x64_v4.9.0\nim_sdk_cpp;$(ProjectDir)..\..\sdks\fr\;$(ProjectDir)..\..\sdks\fr\cuteui;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -176,7 +177,7 @@
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>lib_json.lib;libcurl.lib;libssl.lib;libcrypto.lib;libfaac.lib;librtmp.lib;NELivePlayer.lib;agora_rtc_sdk.lib;winmm.lib;Avrt.lib;Mfuuid.lib;Mfplat.lib;wmcodecdspuuid.lib;nim_cpp_sdk_d.lib;Winmm.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>NELivePlayer.lib;agora_rtc_sdk.lib;winmm.lib;Avrt.lib;Mfuuid.lib;Mfplat.lib;wmcodecdspuuid.lib;nim_cpp_sdk_d.lib;Winmm.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <IgnoreSpecificDefaultLibraries>LIBCD.lib</IgnoreSpecificDefaultLibraries>
     </Link>
   </ItemDefinitionGroup>
@@ -190,7 +191,7 @@
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>lib_json.lib;libcurl.lib;libssl.lib;libcrypto.lib;libfaac.lib;librtmp.lib;NELivePlayer.lib;agora_rtc_sdk.lib;winmm.lib;Avrt.lib;Mfuuid.lib;Mfplat.lib;wmcodecdspuuid.lib;nim_cpp_sdk_d.lib;Winmm.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>NELivePlayer.lib;agora_rtc_sdk.lib;winmm.lib;Avrt.lib;Mfuuid.lib;Mfplat.lib;wmcodecdspuuid.lib;nim_cpp_sdk_d.lib;Winmm.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <ModuleDefinitionFile>missevan-fm.def</ModuleDefinitionFile>
     </Link>
   </ItemDefinitionGroup>
@@ -233,7 +234,7 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalDependencies>lib_json.lib;libcurl.lib;libssl.lib;libcrypto.lib;libfaac.lib;librtmp.lib;NELivePlayer.lib;agora_rtc_sdk.lib;winmm.lib;Avrt.lib;Mfuuid.lib;Mfplat.lib;wmcodecdspuuid.lib;nim_cpp_sdk.lib;Ole32.lib;Shell32.lib;User32.lib;Gdi32.lib;Winmm.lib</AdditionalDependencies>
+      <AdditionalDependencies>NELivePlayer.lib;agora_rtc_sdk.lib;winmm.lib;Avrt.lib;Mfuuid.lib;Mfplat.lib;wmcodecdspuuid.lib;nim_cpp_sdk.lib;Ole32.lib;Shell32.lib;User32.lib;Gdi32.lib;Winmm.lib</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='ReleaseDll|Win32'">
@@ -251,7 +252,7 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalDependencies>lib_json.lib;libcurl.lib;libssl.lib;libcrypto.lib;libfaac.lib;librtmp.lib;NELivePlayer.lib;agora_rtc_sdk.lib;winmm.lib;Avrt.lib;Mfuuid.lib;Mfplat.lib;wmcodecdspuuid.lib;nim_cpp_sdk.lib;Ole32.lib;Shell32.lib;User32.lib;Gdi32.lib;Winmm.lib</AdditionalDependencies>
+      <AdditionalDependencies>NELivePlayer.lib;agora_rtc_sdk.lib;winmm.lib;Avrt.lib;Mfuuid.lib;Mfplat.lib;wmcodecdspuuid.lib;nim_cpp_sdk.lib;Ole32.lib;Shell32.lib;User32.lib;Gdi32.lib;Winmm.lib</AdditionalDependencies>
       <ModuleDefinitionFile>missevan-fm.def</ModuleDefinitionFile>
     </Link>
   </ItemDefinitionGroup>
