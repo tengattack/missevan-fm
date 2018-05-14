@@ -247,7 +247,6 @@ int ChatManager::setupAgoraEngine()
 	std::wstring log_path = global::log_path;
 	log_path += L"agora.log";
 	params.setLogFile(WideToUTF8(log_path).c_str());
-	std::cout << "path is: " << WideToUTF8(log_path).c_str();
 	// INFO | WARNING | ERROR | FATAL
 	params.setLogFilter(15);
 	params.setHighQualityAudioParameters(true, true, true);
@@ -295,7 +294,7 @@ void ChatManager::CreateRoom(int64_t user_id, uint32_t room_id, const std::strin
 		v->SetString("mosaicStream", config.publishUrl);
 		// v->SetString("rawStream", config.rawStreamUrl);
 		v->SetString("extraInfo", config.extraInfo ? config.extraInfo : "");
-		v->SetBoolean("lowDelay", false);
+		v->SetBoolean("lowDelay", true);
 		v->SetInteger("audiosamplerate", 48000);
 		v->SetInteger("audiobitrate", config::audio_bitrate * 1000);
 		v->SetInteger("audiochannels", 2);
@@ -388,10 +387,10 @@ void ChatManager::LeaveRoom()
 		if (m_stat != kChatNone) {
 			nim::VChat::End("");
 			dm->EndAudioDevice();
-			m_stat = kChatNone;
 		}
 	}
 
+	m_stat = kChatNone;
 	m_room_id = 0;
 	m_room_name.clear();
 	m_push_url.clear();

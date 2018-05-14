@@ -99,13 +99,6 @@ bool CMicAudioCapture::Initialize(AudioFormat *format)
 		return false;
 	}
 
-	hr = _DeviceEnumerator->GetDefaultAudioEndpoint(eCapture, eCommunications, &_Endpoint);
-	if (FAILED(hr))
-	{
-		PLOG(ERROR) << "Unable to retrieve default endpoint: " << boost::format("0x%08x") % hr;
-		return false;
-	}
-
 	return true;
 }
 
@@ -152,6 +145,13 @@ bool CMicAudioCapture::Start()
 		// disbale transformer for previous device
 		_Transform.Shutdown();
 		_EnableTransform = false;
+	}
+
+	hr = _DeviceEnumerator->GetDefaultAudioEndpoint(eCapture, eCommunications, &_Endpoint);
+	if (FAILED(hr))
+	{
+		PLOG(ERROR) << "Unable to retrieve default endpoint: " << boost::format("0x%08x") % hr;
+		return false;
 	}
 
 	//
@@ -218,6 +218,8 @@ bool CMicAudioCapture::Start()
 	} else {
 		memcpy(&_waveFormat, mixFormat, sizeof(_waveFormat));
 	}
+
+	ResetEvent(_ShutdownEvent);
 
 	hr = _AudioClient->Initialize(AUDCLNT_SHAREMODE_SHARED, AUDCLNT_STREAMFLAGS_EVENTCALLBACK | AUDCLNT_STREAMFLAGS_NOPERSIST, _EngineLatencyInMS * 10000, 0, mixFormat, NULL);
 
@@ -306,8 +308,11 @@ void CMicAudioCapture::Stop()
 		_EnableTransform = false;
 	}
 
+	SafeRelease(&_Endpoint);
 	SafeRelease(&_AudioClient);
 	SafeRelease(&_CaptureClient);
+
+	ResetEvent(_AudioSamplesReadyEvent);
 
 	memset(&_waveFormat, 0, sizeof(_waveFormat));
 }

@@ -18,16 +18,13 @@
 #include "audio/LoopbackAudioCapture.h"
 
 #include "UserAccount.h"
+#include "Server.h"
 
 #define LPM_CREATE       WM_USER + 1
 #define LPM_DATA         WM_USER + 2
 #define LPM_QUIT         WM_QUIT
 
 #define BUFFER_TIME 5000
-
-#ifdef _DEBUG
-base::CFile file;
-#endif
 
 inline ulong min(ulong a, ulong b)
 {
@@ -43,17 +40,37 @@ public:
 	AgoraEventHandler(LivePublisher *publisher);
 	~AgoraEventHandler();
 
+	enum PublishStat {
+		kPublishNone = 0,
+		kPublishConnecting,
+		kPublishStreaming,
+	};
+
+	void SetConnecting(LivePublisher::ChatCallback callback)
+	{
+		m_callback = callback;
+		m_stat = kPublishConnecting;
+	}
+
+	void SetStat(PublishStat stat) {
+		m_stat = stat;
+	}
+
+	bool IsStreaming() {
+		return m_stat == kPublishStreaming;
+	}
+
 	// agora method
 	virtual void onJoinChannelSuccess(const char* channel, agora::rtc::uid_t uid, int elapsed);
 	virtual void onError(int err, const char* msg);
 
-	LivePublisher::ChatCallback			m_callback;
-	int									m_lastError;
-
+	LivePublisher::ChatCallback	m_callback;
+	PublishStat m_stat;
 };
 
 AgoraEventHandler::AgoraEventHandler(LivePublisher *publisher)
 	: m_publiser(publisher)
+	, m_stat(kPublishNone)
 {
 }
 
@@ -65,23 +82,31 @@ void AgoraEventHandler::onJoinChannelSuccess(const char* channel, agora::rtc::ui
 {
 	std::string str;
 	LOG(INFO) << base::SStringPrintf(&str, "Agora join channel success: %s, uid: %u, elapsed: %d", channel, uid, elapsed);
-	m_callback(200);
+
+	if (m_stat == kPublishConnecting) {
+		m_callback(Server::kSOk);
+		m_callback = NULL;
+		m_stat = kPublishStreaming;
+	}
 }
 
 void AgoraEventHandler::onError(int err, const char* msg)
 {
 	std::string str;
-	if (m_lastError == err) return;
-	m_lastError = err;
 	LOG(ERROR) << base::SStringPrintf(&str, "Agora on error: %d %s", err, msg);
-	m_callback(err);
+
+	if (m_stat == kPublishConnecting) {
+		m_callback(Server::kSInternalError);
+		m_callback = NULL;
+		m_stat = kPublishNone;
+	}
 }
 
 LivePublisher::LivePublisher()
 	: m_encoder(NULL)
 	, m_engine(NULL)
 	, m_provider(kProviderNetease)
-	, m_event_handler( new AgoraEventHandler(this) )
+	, m_event_handler(NULL)
 	, m_start_time(0)
 	, m_time(0)
 	, m_started(false)
@@ -95,19 +120,13 @@ LivePublisher::LivePublisher()
 	m_format.sampleRate = 48000;
 	m_format.bits = 16;
 	m_format.channels = 2;
-#ifdef _DEBUG
-	std::wstring aacFile(global::wpath);
-	aacFile += L"record.aac";
-	file.Open(base::kFileCreate, aacFile.c_str());
-#endif
+	m_event_handler = new AgoraEventHandler(this);
 }
 
 LivePublisher::~LivePublisher()
 {
-#ifdef _DEBUG
-	file.Close();
-#endif
 	Shutdown();
+	delete m_event_handler;
 }
 
 uint32 LivePublisher::GetBufferLength()
@@ -122,12 +141,16 @@ ulong LivePublisher::GetInputSamples()
 		return 2048;
 	}
 	else {
-		return 2048;// 原先是 CAACEncoder 的代码
+		// 原先是 CAACEncoder 的代码
+		return 2048;
 	}
 }
 
 bool LivePublisher::IsStreaming()
 {
+	if (m_provider == kProviderAgora) {
+		return m_event_handler->IsStreaming();
+	}
 	return m_mixer_thread != NULL;
 }
 
@@ -180,6 +203,17 @@ LivePublisherCapture* LivePublisher::GetCapture(LivePublisherCaptureType type)
 	return NULL;
 }
 
+void LivePublisher::ShutdownCapture()
+{
+	for (size_t i = 0; i < m_captures.size(); i++)
+	{
+		m_captures[i]->capture->Shutdown();
+		delete m_captures[i]->capture;
+		delete m_captures[i];
+	}
+	m_captures.clear();
+}
+
 int LivePublisher::GetActiveCaptureCount()
 {
 	int active_count = 0;
@@ -203,17 +237,26 @@ bool LivePublisher::Start(int64_t user_id, uint32_t room_id, const std::string& 
 
 	if (m_provider == kProviderAgora) {
 		int ret;
+
+		if (key.length() <= 0) {
+			callback(Server::kSBadRequest);
+			return false;
+		}
+
 		agora::rtc::RtcEngineContext ctx;
 		ctx.appId = AGORA_APP_ID;
-		// TODO: 解决内存泄漏的问题（待检查）
-		m_event_handler->m_callback = callback;
+
+		m_event_handler->SetConnecting(callback);
 		ctx.eventHandler = m_event_handler;
-		m_engine = createAgoraRtcEngine();
-		ret = m_engine->initialize(ctx);
-		if (ret != 0) {
-			LOG(ERROR) << "Agora engine init failed! error: " << ret;
-			callback(ret);
-			return false;
+		if (m_engine == NULL)
+		{
+			m_engine = createAgoraRtcEngine();
+			ret = m_engine->initialize(ctx);
+			if (ret != 0) {
+				LOG(ERROR) << "Agora engine init failed! error: " << ret;
+				callback(Server::kSInternalError);
+				return false;
+			}
 		}
 
 		m_engine->setChannelProfile(agora::rtc::CHANNEL_PROFILE_LIVE_BROADCASTING);
@@ -251,7 +294,7 @@ bool LivePublisher::Start(int64_t user_id, uint32_t room_id, const std::string& 
 		v->SetString("mosaicStream", config.publishUrl);
 		// v->SetString("rawStream", config.rawStreamUrl);
 		v->SetString("extraInfo", config.extraInfo ? config.extraInfo : "");
-		v->SetBoolean("lowDelay", false);
+		v->SetBoolean("lowDelay", true);
 		v->SetInteger("audiosamplerate", m_format.sampleRate);
 		v->SetInteger("audiobitrate", config::audio_bitrate * 1000);
 		v->SetInteger("audiochannels", m_format.channels);
@@ -265,7 +308,10 @@ bool LivePublisher::Start(int64_t user_id, uint32_t room_id, const std::string& 
 		agora::rtc::uid_t agoraUserId = UserAccount::GetInstance()->GetAgoraUserId();
 		ret = m_engine->joinChannel(key.c_str(), room_name.c_str(), publisher_info.c_str(), agoraUserId);
 		if (ret != 0) {
+			m_event_handler->SetStat(AgoraEventHandler::kPublishNone);
 	 		LOG(ERROR) << "Agora engine join channel failed! error: " << ret;
+			callback(Server::kSInternalError);
+			return false;
 		}
 	} else {
 		// 原先是 CAACEncoder 的代码
@@ -287,7 +333,8 @@ bool LivePublisher::Start(int64_t user_id, uint32_t room_id, const std::string& 
 	if (m_mixer_thread == NULL)
 	{
 		LOG(ERROR) << "Unable to create transport thread.";
-		callback(-1);
+		Stop();
+		callback(Server::kSInternalError);
 		return false;
 	}
 	m_mixer_event.Wait();
@@ -297,7 +344,8 @@ bool LivePublisher::Start(int64_t user_id, uint32_t room_id, const std::string& 
 
 	if (!m_started) {
 		LOG(ERROR) << "Unable to start.";
-		callback(-1);
+		Stop();
+		callback(Server::kSInternalError);
 		return false;
 	}
 
@@ -312,7 +360,7 @@ bool LivePublisher::Start(int64_t user_id, uint32_t room_id, const std::string& 
 	if (!cap->capture->Start()) {
 		LOG(ERROR) << "Unable to start mic capture.";
 		Stop();
-		callback(-1);
+		callback(Server::kSInternalError);
 		return false;
 	}
 
@@ -328,6 +376,7 @@ void LivePublisher::Stop()
 	for (size_t i = 0; i < m_captures.size(); i++)
 	{
 		m_captures[i]->capture->Stop();
+		m_captures[i]->slice.ClearBuffer();
 		m_captures[i]->active = false;
 	}
 	if (m_mixer_thread)
@@ -345,10 +394,7 @@ void LivePublisher::Stop()
 		m_engine->release();
 		m_engine = NULL;
 	}
-	if (m_event_handler) {
-		delete m_event_handler;
-		m_event_handler = NULL;
-	}
+	m_event_handler->SetStat(AgoraEventHandler::kPublishNone);
 	m_time = 0;
 	m_start_time = 0;
 	m_push_url = "";
@@ -362,14 +408,7 @@ void LivePublisher::Stop()
 void LivePublisher::Shutdown()
 {
 	Stop();
-
-	for (size_t i = 0; i < m_captures.size(); i++)
-	{
-		m_captures[i]->capture->Shutdown();
-		delete m_captures[i]->capture;
-		delete m_captures[i];
-	}
-	m_captures.clear();
+	ShutdownCapture();
 }
 
 bool LivePublisher::EnableLookbackCapture(bool bEnable)
@@ -704,7 +743,6 @@ DWORD LivePublisher::MixerProc(LPVOID context)
 #ifdef _DEBUG
 			std::string info;
 			VLOG(1) << base::SStringPrintf(&info, "timeoffset: %u sent: %d", d->timeoffset, sent);
-			file.Write(d->data, d->length);
 #endif
 			free(d->data);
 			free(d);
